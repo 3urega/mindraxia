@@ -1,0 +1,25 @@
+{
+  "name": "mindraxia",
+  "version": "1.0.0",
+  "description": "Plataforma web de divulgación científica técnica",
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo '🚀 Arrancando Mindraxia en modo desarrollo...' && pnpm --parallel --filter frontend --filter backend dev",
+    "dev:frontend": "echo '⚛️  Arrancando Frontend (Next.js)...' && pnpm --filter frontend dev",
+    "dev:backend": "echo '🔧 Arrancando Backend (Strapi)...' && pnpm --filter backend develop",
+    "build": "pnpm --filter frontend build",
+    "build:all": "pnpm --parallel --filter frontend --filter backend build",
+    "install:all": "pnpm install",
+    "clean": "pnpm --parallel --filter frontend --filter backend clean",
+    "setup": "echo '📦 Instalando dependencias...' && pnpm install && echo '✅ Setup completado. Ejecuta: pnpm dev'",
+    "start": "echo '🌟 Iniciando Mindraxia en producción...' && pnpm --parallel --filter frontend --filter backend start"
+  },
+  "keywords": ["ciencia", "divulgación", "física", "matemáticas", "ingeniería"],
+  "author": "Mindraxia Team",
+  "license": "MIT",
+  "packageManager": "pnpm@10.10.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+} 

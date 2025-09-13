@@ -1,0 +1,29 @@
+{
+  "name": "@mindraxia/ai",
+  "version": "0.1.0",
+  "description": "AI integration package for Mindraxia - LangChain & LangGraph utilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.1.0",
+    "langchain": "^0.1.0",
+    "langgraph": "^0.0.1",
+    "pgvector": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "keywords": [
+    "ai",
+    "langchain",
+    "langgraph",
+    "embeddings",
+    "vector-search"
+  ]
+} 

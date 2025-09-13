@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "autores",
+  "info": {
+    "singularName": "autor",
+    "pluralName": "autores",
+    "displayName": "Autor",
+    "description": "Autores de los artículos"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nombre": {
+      "type": "string",
+      "required": true
+    },
+    "biografia": {
+      "type": "richtext"
+    },
+    "email": {
+      "type": "email"
+    },
+    "twitter": {
+      "type": "string"
+    },
+    "linkedin": {
+      "type": "string"
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "articulos": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::articulo.articulo",
+      "mappedBy": "autor"
+    }
+  }
+} 
