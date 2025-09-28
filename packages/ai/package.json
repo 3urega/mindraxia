@@ -10,9 +10,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@langchain/core": "^0.1.0",
-    "langchain": "^0.1.0",
-    "langgraph": "^0.0.1",
+    "@langchain/core": "^0.2.0",
+    "langchain": "^0.2.0",
     "pgvector": "^0.1.0"
   },
   "devDependencies": {

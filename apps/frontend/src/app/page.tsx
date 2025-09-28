@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays, Clock, User } from "lucide-react"
+import CategoriasReales from "@/components/categorias-reales"
 
 // Datos dummy para artículos
 const articulos = [
@@ -102,18 +103,7 @@ export default function Home() {
         </div>
 
         {/* Categorías Destacadas */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Explora por Categorías</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {["Física", "Matemáticas", "Ingeniería", "Ciencias de la Computación"].map((categoria) => (
-              <Card key={categoria} className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-lg">{categoria}</CardTitle>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        </div>
+        <CategoriasReales />
       </div>
     </MainLayout>
   )

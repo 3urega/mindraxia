@@ -1,23 +1,23 @@
 {
   "kind": "collectionType",
-  "collectionName": "autores",
+  "collectionName": "authors",
   "info": {
-    "singularName": "autor",
-    "pluralName": "autores",
-    "displayName": "Autor",
-    "description": "Autores de los artículos"
+    "singularName": "author",
+    "pluralName": "authors",
+    "displayName": "Author",
+    "description": "Authors of articles"
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
-    "nombre": {
+    "name": {
       "type": "string",
       "required": true
     },
-    "biografia": {
-      "type": "richtext"
+    "bio": {
+      "type": "text"
     },
     "email": {
       "type": "email"
@@ -33,12 +33,6 @@
       "multiple": false,
       "required": false,
       "allowedTypes": ["images"]
-    },
-    "articulos": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::articulo.articulo",
-      "mappedBy": "autor"
     }
   }
-} 
+}

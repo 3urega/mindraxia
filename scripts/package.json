@@ -1,0 +1,13 @@
+{
+  "name": "mindraxia-scripts",
+  "version": "1.0.0",
+  "description": "Scripts para poblar Mindraxia con datos de ejemplo",
+  "main": "seed-data.js",
+  "scripts": {
+    "seed": "node seed-data.js",
+    "install": "npm install"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+} 

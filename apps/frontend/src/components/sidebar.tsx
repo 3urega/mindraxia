@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Book, Home, Tag, User } from "lucide-react"
+import { Book, Home, Tag, User, FlaskConical } from "lucide-react"
 
 const navigation = [
   {
@@ -25,6 +25,11 @@ const navigation = [
     name: "Autores",
     href: "/autores", 
     icon: User,
+  },
+  {
+    name: "Prueba LaTeX",
+    href: "/test-latex",
+    icon: FlaskConical,
   },
 ]
 

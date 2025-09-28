@@ -1,61 +1,59 @@
 {
   "kind": "collectionType",
-  "collectionName": "articulos",
+  "collectionName": "articles",
   "info": {
-    "singularName": "articulo",
-    "pluralName": "articulos",
-    "displayName": "Articulo",
-    "description": "Artículos de divulgación científica"
+    "singularName": "article",
+    "pluralName": "articles",
+    "displayName": "Article",
+    "description": "Scientific articles for Mindraxia"
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
-    "titulo": {
+    "title": {
       "type": "string",
       "required": true
     },
-    "resumen": {
+    "summary": {
       "type": "text",
       "required": true
     },
-    "contenido": {
-      "type": "richtext",
+    "content": {
+      "type": "text",
       "required": true
     },
     "slug": {
       "type": "uid",
-      "targetField": "titulo",
+      "targetField": "title",
       "required": true
     },
-    "fechaPublicacion": {
+    "publishedAt": {
       "type": "datetime"
     },
-    "tiempoLectura": {
+    "readingTime": {
       "type": "integer",
       "min": 1
     },
-    "etiquetas": {
-      "type": "json"
+    "tags": {
+      "type": "text"
     },
-    "autor": {
+    "category": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::autor.autor",
-      "inversedBy": "articulos"
+      "target": "api::category.category"
     },
-    "categoria": {
+    "author": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::categoria.categoria",
-      "inversedBy": "articulos"
+      "target": "api::author.author"
     },
-    "imagenDestacada": {
+    "featuredImage": {
       "type": "media",
       "multiple": false,
       "required": false,
       "allowedTypes": ["images"]
     }
   }
-} 
+}

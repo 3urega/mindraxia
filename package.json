@@ -12,6 +12,7 @@
     "install:all": "pnpm install",
     "clean": "pnpm --parallel --filter frontend --filter backend clean",
     "setup": "echo '📦 Instalando dependencias...' && pnpm install && echo '✅ Setup completado. Ejecuta: pnpm dev'",
+    "seed": "echo '🌱 Poblando Strapi con datos de ejemplo...' && cd scripts && npm install && node seed-data.js",
     "start": "echo '🌟 Iniciando Mindraxia en producción...' && pnpm --parallel --filter frontend --filter backend start"
   },
   "keywords": ["ciencia", "divulgación", "física", "matemáticas", "ingeniería"],

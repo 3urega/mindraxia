@@ -373,77 +373,75 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiArticuloArticulo extends Struct.CollectionTypeSchema {
-  collectionName: 'articulos';
+export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
+  collectionName: 'articles';
   info: {
-    description: 'Art\u00EDculos de divulgaci\u00F3n cient\u00EDfica';
-    displayName: 'Articulo';
-    pluralName: 'articulos';
-    singularName: 'articulo';
+    description: 'Scientific articles for Mindraxia';
+    displayName: 'Article';
+    pluralName: 'articles';
+    singularName: 'article';
   };
   options: {
     draftAndPublish: true;
   };
   attributes: {
-    autor: Schema.Attribute.Relation<'manyToOne', 'api::autor.autor'>;
-    categoria: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::categoria.categoria'
-    >;
-    contenido: Schema.Attribute.RichText & Schema.Attribute.Required;
+    author: Schema.Attribute.Relation<'manyToOne', 'api::author.author'>;
+    category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
+    content: Schema.Attribute.Text & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    etiquetas: Schema.Attribute.JSON;
-    fechaPublicacion: Schema.Attribute.DateTime;
-    imagenDestacada: Schema.Attribute.Media<'images'>;
+    featuredImage: Schema.Attribute.Media<'images'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
-      'api::articulo.articulo'
+      'api::article.article'
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
-    resumen: Schema.Attribute.Text & Schema.Attribute.Required;
-    slug: Schema.Attribute.UID<'titulo'> & Schema.Attribute.Required;
-    tiempoLectura: Schema.Attribute.Integer &
+    readingTime: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
           min: 1;
         },
         number
       >;
-    titulo: Schema.Attribute.String & Schema.Attribute.Required;
+    slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
+    summary: Schema.Attribute.Text & Schema.Attribute.Required;
+    tags: Schema.Attribute.Text;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
   };
 }
 
-export interface ApiAutorAutor extends Struct.CollectionTypeSchema {
-  collectionName: 'autores';
+export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
+  collectionName: 'authors';
   info: {
-    description: 'Autores de los art\u00EDculos';
-    displayName: 'Autor';
-    pluralName: 'autores';
-    singularName: 'autor';
+    description: 'Authors of articles';
+    displayName: 'Author';
+    pluralName: 'authors';
+    singularName: 'author';
   };
   options: {
     draftAndPublish: true;
   };
   attributes: {
-    articulos: Schema.Attribute.Relation<'oneToMany', 'api::articulo.articulo'>;
     avatar: Schema.Attribute.Media<'images'>;
-    biografia: Schema.Attribute.RichText;
+    bio: Schema.Attribute.Text;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     email: Schema.Attribute.Email;
     linkedin: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::autor.autor'> &
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::author.author'
+    > &
       Schema.Attribute.Private;
-    nombre: Schema.Attribute.String & Schema.Attribute.Required;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     twitter: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
@@ -452,34 +450,30 @@ export interface ApiAutorAutor extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiCategoriaCategoria extends Struct.CollectionTypeSchema {
-  collectionName: 'categorias';
+export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
+  collectionName: 'categories';
   info: {
-    description: 'Categor\u00EDas para organizar los art\u00EDculos';
-    displayName: 'Categoria';
-    pluralName: 'categorias';
-    singularName: 'categoria';
+    displayName: 'category';
+    pluralName: 'categories';
+    singularName: 'category';
   };
   options: {
     draftAndPublish: true;
   };
   attributes: {
-    articulos: Schema.Attribute.Relation<'oneToMany', 'api::articulo.articulo'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    descripcion: Schema.Attribute.Text;
+    description: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
-      'api::categoria.categoria'
+      'api::category.category'
     > &
       Schema.Attribute.Private;
-    nombre: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
+    name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    slug: Schema.Attribute.UID<'nombre'> & Schema.Attribute.Required;
+    slug: Schema.Attribute.UID<'name'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -995,9 +989,9 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
-      'api::articulo.articulo': ApiArticuloArticulo;
-      'api::autor.autor': ApiAutorAutor;
-      'api::categoria.categoria': ApiCategoriaCategoria;
+      'api::article.article': ApiArticleArticle;
+      'api::author.author': ApiAuthorAuthor;
+      'api::category.category': ApiCategoryCategory;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;
