@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer theme {
+  @theme {
+    /* Colores de fondo (Espacio Profundo) */
+    --color-space-dark: #0a0a0f;
+    --color-space-primary: #1a1a2e;
+    --color-space-secondary: #16213e;
+    
+    /* Colores de acento (Estrellas y Nebulosas) */
+    --color-star-cyan: #64ffda;
+    --color-nebula-purple: #7c3aed;
+    --color-star-gold: #fbbf24;
+    
+    /* Colores de texto */
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted: #94a3b8;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+:root {
+  /* Variables CSS adicionales para efectos personalizados */
+  --border-glow: rgba(100, 255, 218, 0.2);
+  --glow-cyan: 0 0 20px rgba(100, 255, 218, 0.3);
+  --glow-purple: 0 0 20px rgba(124, 58, 237, 0.3);
 }
+
+body {
+  background: #0a0a0f;
+  color: #f8fafc;
+  font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100vh;
+}
+
+/* Efectos de glow para elementos interactivos */
+.glow-cyan {
+  box-shadow: var(--glow-cyan);
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-cyan:hover {
+  box-shadow: 0 0 30px rgba(100, 255, 218, 0.5);
+}
+
+/* Bordes translúcidos */
+.border-glow {
+  border-color: var(--border-glow);
+}
+
+/* Estilos para KaTeX (fórmulas matemáticas) */
+.katex {
+  font-size: 1.1em;
+  color: var(--color-text-primary);
+}
+
+.katex-display {
+  margin: 1.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-display > .katex {
+  display: inline-block;
+  text-align: initial;
+}
+
+/* Ajustes para tema oscuro en fórmulas */
+.katex .base {
+  color: var(--color-text-primary);
+}
+
+.katex .mord {
+  color: var(--color-text-primary);
+}
+
+.katex .mrel {
+  color: var(--color-star-cyan);
+}
+
+.katex .mbin {
+  color: var(--color-star-cyan);
+}
+
+.katex .mop {
+  color: var(--color-nebula-purple);
+}
+
+/* Estilos para fórmulas numeradas (tags) */
+.katex-display .katex .tag {
+  position: absolute;
+  right: 0;
+  color: var(--color-star-gold);
+  font-size: 0.9em;
+  margin-right: 0.5em;
+}
+
+.katex-display {
+  position: relative;
+  padding-right: 3em; /* Espacio para el tag */
+}
+
+/* Estilos para código inline y bloques de código */
+.prose code {
+  background-color: rgba(26, 26, 46, 0.8);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.prose pre {
+  background-color: rgba(26, 26, 46, 0.8);
+  border: 1px solid var(--border-glow);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Estilos para ecuaciones con anclas - efecto de resaltado */
+.equation-highlight {
+  animation: highlightPulse 3s ease-in-out;
+  border-color: var(--star-cyan) !important;
+  box-shadow: 0 0 20px rgba(100, 255, 218, 0.4);
+}
+
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.6);
+    border-color: var(--star-cyan);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(100, 255, 218, 0.8);
+    border-color: var(--star-cyan);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.2);
+    border-color: var(--border-glow);
+  }
+}
+
