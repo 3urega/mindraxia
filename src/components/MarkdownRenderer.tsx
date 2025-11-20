@@ -13,7 +13,6 @@ import {
   preprocessAnchors,
   getAnchorHtmlId,
 } from '@/lib/markdown-anchors';
-import { remarkEquationReferences } from '@/lib/remark-equation-references';
 import EquationAnchor from './EquationAnchor';
 import EquationReference from './EquationReference';
 
@@ -37,13 +36,12 @@ export default function MarkdownRenderer({
   let processedContent = preprocessAnchors(content);
   
   // Crear mapa de referencias para acceso rápido durante el renderizado
-  // En lugar de usar placeholders, procesaremos las referencias directamente en los componentes
   const referencesMap = new Map(
     references.map((ref, index) => [
       ref.fullMatch,
       {
-        postSlug: ref.postSlug,
         anchorId: ref.anchorId,
+        postSlug: ref.postSlug,
         linkText: ref.linkText,
       },
     ])
@@ -52,7 +50,7 @@ export default function MarkdownRenderer({
   return (
     <div className="prose prose-invert max-w-none">
       <ReactMarkdown
-        remarkPlugins={[remarkMath, remarkGfm, remarkEquationReferences]}
+        remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex]}
         components={{
           // Estilos personalizados para elementos markdown
@@ -65,153 +63,65 @@ export default function MarkdownRenderer({
           h3: ({ node, ...props }) => (
             <h3 className="text-2xl font-semibold text-text-primary mb-2 mt-4" {...props} />
           ),
-          p: ({ node, ...props }: any) => {
-            // Función helper para procesar children y reemplazar referencias
-            const processChildren = (children: any): React.ReactNode[] => {
+          p: ({ node, children, ...props }: any) => {
+            // Procesar children para detectar referencias
+            const processChildren = (children: any): any => {
               if (typeof children === 'string') {
-                // Buscar referencias en el texto: {{eq:...|...}}
-                const referenceRegex = /\{\{eq:([^}|]+)\|([^}]+)\}\}/g;
-                const matches = Array.from(children.matchAll(referenceRegex));
+                // Buscar referencias en el texto
+                const parts: any[] = [];
+                let lastIndex = 0;
+                let match;
+                const refRegex = /\{\{eq:([^}|]+)\|([^}]+)\}\}/g;
                 
-                if (matches.length > 0) {
-                  const parts: React.ReactNode[] = [];
-                  let lastIndex = 0;
-                  
-                  matches.forEach((match, idx) => {
-                    // Añadir texto antes de la referencia
-                    if (match.index !== undefined && match.index > lastIndex) {
-                      parts.push(
-                        <span key={`text-before-${idx}`}>
-                          {children.substring(lastIndex, match.index)}
-                        </span>
-                      );
-                    }
-                    
-                    // Procesar la referencia
-                    const fullMatch = match[0];
-                    const path = match[1];
-                    const linkText = match[2];
-                    const pathParts = path.split('/');
-                    
-                    let postSlug: string | undefined;
-                    let anchorId: string;
-                    
-                    if (pathParts.length === 2) {
-                      // Referencia a otro post
-                      postSlug = pathParts[0].trim();
-                      anchorId = pathParts[1].trim();
-                    } else {
-                      // Referencia al mismo post
-                      anchorId = path.trim();
-                    }
-                    
-                    parts.push(
-                      <EquationReference
-                        key={`ref-${idx}`}
-                        anchorId={anchorId}
-                        postSlug={postSlug}
-                        linkText={linkText.trim()}
-                        currentSlug={currentSlug}
-                      />
-                    );
-                    
-                    lastIndex = (match.index || 0) + fullMatch.length;
-                  });
-                  
-                  // Añadir texto restante
-                  if (lastIndex < children.length) {
-                    parts.push(
-                      <span key="text-after">{children.substring(lastIndex)}</span>
-                    );
+                while ((match = refRegex.exec(children)) !== null) {
+                  // Añadir texto antes de la referencia
+                  if (match.index > lastIndex) {
+                    parts.push(children.substring(lastIndex, match.index));
                   }
                   
-                  return parts;
+                  // Procesar la referencia
+                  const [, path, linkText] = match;
+                  const pathParts = path.split('/');
+                  const anchorId = pathParts.length === 2 ? pathParts[1].trim() : pathParts[0].trim();
+                  const postSlug = pathParts.length === 2 ? pathParts[0].trim() : undefined;
+                  
+                  parts.push(
+                    <EquationReference
+                      key={`ref-${match.index}`}
+                      anchorId={anchorId}
+                      postSlug={postSlug}
+                      linkText={linkText.trim()}
+                      currentSlug={currentSlug}
+                    />
+                  );
+                  
+                  lastIndex = match.index + match[0].length;
                 }
-                return [children];
+                
+                // Añadir texto restante
+                if (lastIndex < children.length) {
+                  parts.push(children.substring(lastIndex));
+                }
+                
+                return parts.length > 0 ? parts : children;
               }
               
               if (Array.isArray(children)) {
-                return children.flatMap((child, idx) => {
-                  if (typeof child === 'string') {
-                    return processChildren(child);
-                  }
-                  return <span key={`child-${idx}`}>{child}</span>;
-                });
+                return children.map((child, index) => (
+                  <span key={index}>{processChildren(child)}</span>
+                ));
               }
               
-              return [children];
+              return children;
             };
-
-            const processedChildren = processChildren(props.children);
+            
+            const processedChildren = processChildren(children);
             
             return (
-              <p className="text-text-secondary mb-4 leading-relaxed">
+              <p className="text-text-secondary mb-4 leading-relaxed" {...props}>
                 {processedChildren}
               </p>
             );
-          },
-          // También procesar en nodos de texto
-          text: ({ node, ...props }: any) => {
-            const value = String(props.children || '');
-            // Buscar referencias en el texto: {{eq:...|...}}
-            const referenceRegex = /\{\{eq:([^}|]+)\|([^}]+)\}\}/g;
-            const matches = Array.from(value.matchAll(referenceRegex));
-            
-            if (matches.length > 0) {
-              const parts: React.ReactNode[] = [];
-              let lastIndex = 0;
-              
-              matches.forEach((match, idx) => {
-                // Añadir texto antes de la referencia
-                if (match.index !== undefined && match.index > lastIndex) {
-                  parts.push(
-                    <span key={`text-before-${idx}`}>
-                      {value.substring(lastIndex, match.index)}
-                    </span>
-                  );
-                }
-                
-                // Procesar la referencia
-                const path = match[1];
-                const linkText = match[2];
-                const pathParts = path.split('/');
-                
-                let postSlug: string | undefined;
-                let anchorId: string;
-                
-                if (pathParts.length === 2) {
-                  // Referencia a otro post
-                  postSlug = pathParts[0].trim();
-                  anchorId = pathParts[1].trim();
-                } else {
-                  // Referencia al mismo post
-                  anchorId = path.trim();
-                }
-                
-                parts.push(
-                  <EquationReference
-                    key={`text-ref-${idx}`}
-                    anchorId={anchorId}
-                    postSlug={postSlug}
-                    linkText={linkText.trim()}
-                    currentSlug={currentSlug}
-                  />
-                );
-                
-                lastIndex = (match.index || 0) + match[0].length;
-              });
-              
-              // Añadir texto restante
-              if (lastIndex < value.length) {
-                parts.push(
-                  <span key="text-after">{value.substring(lastIndex)}</span>
-                );
-              }
-              
-              return <>{parts}</>;
-            }
-            
-            return <>{value}</>;
           },
           ul: ({ node, ...props }) => (
             <ul className="list-disc list-inside mb-4 text-text-secondary space-y-2" {...props} />
@@ -295,14 +205,35 @@ export default function MarkdownRenderer({
               {...props}
             />
           ),
-          a: ({ node, ...props }) => (
-            <a
-              className="text-star-cyan hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-              {...props}
-            />
-          ),
+          a: ({ node, href, className, ...props }: any) => {
+            // Detectar si es una referencia a ecuación
+            if (className === 'equation-reference' || href?.includes('#eq-')) {
+              const anchorId = props['data-anchor'];
+              const postSlug = props['data-post'];
+              
+              if (anchorId) {
+                return (
+                  <EquationReference
+                    anchorId={anchorId}
+                    postSlug={postSlug || undefined}
+                    linkText={props.children as string}
+                    currentSlug={currentSlug}
+                  />
+                );
+              }
+            }
+            
+            // Enlaces normales
+            return (
+              <a
+                className="text-star-cyan hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+                href={href}
+                {...props}
+              />
+            );
+          },
           strong: ({ node, ...props }) => (
             <strong className="font-bold text-text-primary" {...props} />
           ),
