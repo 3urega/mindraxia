@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/get-session';
 import { z } from 'zod';
 import { generateSlug } from '@/lib/utils';
 import { syncPostEquations } from '@/lib/sync-equations';
+import { syncPostImageAnchors } from '@/lib/sync-images';
 
 /**
  * GET /api/posts
@@ -181,13 +182,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Sincronizar ecuaciones del post
+    // Sincronizar ecuaciones e imágenes con anclas del post
     try {
       await syncPostEquations(post.id, content);
+      await syncPostImageAnchors(post.id, content);
     } catch (error) {
-      console.error('Error syncing equations (non-fatal):', error);
-      // No fallar la creación del post si hay error sincronizando ecuaciones
+      console.error('Error syncing equations/images (non-fatal):', error);
+      // No fallar la creación del post si hay error sincronizando
     }
+
+    // Nota: revalidatePath no funciona en Route Handlers (API routes)
+    // El caché se desactiva con cache: 'no-store' en la página
 
     // Serializar fechas
     const serializedPost = {

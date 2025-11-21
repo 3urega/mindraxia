@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
 import EquationReferenceSelector from './EquationReferenceSelector';
+import ImageUploader from './ImageUploader';
 
 interface MarkdownEditorProps {
   value: string;
@@ -23,6 +24,7 @@ export default function MarkdownEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [equationCounter, setEquationCounter] = useState(1);
   const [showReferenceSelector, setShowReferenceSelector] = useState(false);
+  const [showImageUploader, setShowImageUploader] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
 
   // Función para insertar texto en la posición del cursor
@@ -237,6 +239,22 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar imagen
+  const handleImageSelect = (url: string, alt: string, anchorId?: string, description?: string) => {
+    let markdownText = '';
+    if (anchorId) {
+      if (description) {
+        markdownText = `![${alt}](${url}){#img:${anchorId}|descripción: ${description}}`;
+      } else {
+        markdownText = `![${alt}](${url}){#img:${anchorId}}`;
+      }
+    } else {
+      markdownText = `![${alt}](${url})`;
+    }
+    
+    insertText(markdownText);
+  };
+
   // Insertar referencia a ecuación
   const handleInsertReference = (anchorId: string, postSlug: string) => {
     // Determinar si es referencia al mismo post o a otro
@@ -400,6 +418,22 @@ export default function MarkdownEditor({
             Insertar Referencia
           </button>
         </div>
+
+        {/* Imágenes */}
+        <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+          <span className="text-xs text-text-muted self-center mr-2 font-semibold">Imágenes:</span>
+          {postId && (
+            <button
+              type="button"
+              onClick={() => setShowImageUploader(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              style={{ borderColor: 'var(--border-glow)' }}
+              title="Subir e insertar imagen"
+            >
+              Insertar Imagen
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Modal de selección de referencias */}
@@ -409,6 +443,15 @@ export default function MarkdownEditor({
           currentPostSlug={currentPostSlug}
           onSelect={handleInsertReference}
           onClose={() => setShowReferenceSelector(false)}
+        />
+      )}
+
+      {/* Modal de subida de imágenes */}
+      {showImageUploader && postId && (
+        <ImageUploader
+          postId={postId}
+          onSelect={handleImageSelect}
+          onClose={() => setShowImageUploader(false)}
         />
       )}
 

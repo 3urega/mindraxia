@@ -33,6 +33,7 @@ model Post {
   author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   tags        Tag[]
   equations   Equation[]
+  images      Image[]
   
   @@index([slug])
   @@index([published])
@@ -55,6 +56,27 @@ model Equation {
   updatedAt   DateTime @updatedAt
   
   @@unique([postId, anchorId]) // Un anchorId único por post
+  @@index([postId])
+  @@index([anchorId])
+}
+
+model Image {
+  id          String   @id @default(cuid())
+  anchorId    String?  // ID único del anchor (ej: "diagrama-flujo") - opcional
+  description String?  // Descripción para búsquedas con IA
+  filename    String   // Nombre del archivo guardado
+  originalName String  // Nombre original del archivo
+  mimeType    String   // Tipo MIME (image/jpeg, image/png, etc.)
+  size        Int      // Tamaño en bytes
+  path        String   // Ruta relativa: /uploads/posts/[post-id]/[filename]
+  url         String   // URL pública: /uploads/posts/[post-id]/[filename]
+  alt         String?  // Texto alternativo
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([postId, anchorId]) // Un anchorId único por post (si tiene ancla)
   @@index([postId])
   @@index([anchorId])
 }

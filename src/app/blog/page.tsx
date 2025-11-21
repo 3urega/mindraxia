@@ -18,25 +18,55 @@ interface PostsResponse {
 
 async function getPosts(): Promise<Post[]> {
   try {
-    // Usar URL relativa - Next.js maneja esto correctamente en Server Components
-    // Construir URL absoluta si estamos en producción para evitar problemas
-    const baseUrl = 
-      process.env.NODE_ENV === 'production' 
-        ? (process.env.NEXT_PUBLIC_URL || 'https://mindraxia.com')
-        : 'http://localhost:3000';
+    // Llamar directamente a Prisma en lugar de usar fetch para evitar problemas de caché
+    const { prisma } = await import('@/lib/prisma');
     
-    const url = `${baseUrl}/api/posts`;
-
-    const response = await fetch(url, {
-      next: { revalidate: 60 }, // ISR: revalidar cada 60 segundos
+    const posts = await prisma.post.findMany({
+      where: {
+        published: true,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          publishedAt: 'desc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch posts: ${response.statusText}`);
-    }
-
-    const data: PostsResponse = await response.json();
-    return data.posts;
+    // Mapear a formato esperado
+    return posts.map((post) => ({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      publishedAt: post.publishedAt?.toISOString() ?? null,
+      tags: post.tags.map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+      })),
+      author: {
+        id: post.author.id,
+        name: post.author.name,
+      },
+    }));
   } catch (error) {
     console.error('Error fetching posts:', error);
     // Retornar array vacío en caso de error para no romper la página

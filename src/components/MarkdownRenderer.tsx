@@ -13,8 +13,16 @@ import {
   preprocessAnchors,
   getAnchorHtmlId,
 } from '@/lib/markdown-anchors';
+import {
+  extractImageAnchors,
+  extractImageReferences,
+  getImageAnchorHtmlId,
+  preprocessImageAnchors,
+} from '@/lib/image-anchors';
 import EquationAnchor from './EquationAnchor';
 import EquationReference from './EquationReference';
+import ImageAnchor from './ImageAnchor';
+import ImageReference from './ImageReference';
 
 interface MarkdownRendererProps {
   content: string;
@@ -28,16 +36,31 @@ export default function MarkdownRenderer({
   // Preprocesar contenido: extraer anclas y referencias ANTES de modificar el contenido
   const anchors = extractAnchors(content);
   const references = extractReferences(content);
+  const imageAnchors = extractImageAnchors(content);
+  const imageReferences = extractImageReferences(content);
   
-  // Crear mapa de anclas por ID para acceso rápido
+  // Crear mapas de anclas por ID para acceso rápido
   const anchorsMap = new Map(anchors.map(a => [a.anchorId, a]));
+  const imageAnchorsMap = new Map(imageAnchors.map(a => [a.anchorId, a]));
   
-  // Preprocesar markdown: convertir ecuaciones con anclas a bloques de código especiales
+  // Preprocesar markdown: convertir ecuaciones e imágenes con anclas
   let processedContent = preprocessAnchors(content);
+  processedContent = preprocessImageAnchors(processedContent);
   
-  // Crear mapa de referencias para acceso rápido durante el renderizado
+  // Crear mapas de referencias para acceso rápido durante el renderizado
   const referencesMap = new Map(
     references.map((ref, index) => [
+      ref.fullMatch,
+      {
+        anchorId: ref.anchorId,
+        postSlug: ref.postSlug,
+        linkText: ref.linkText,
+      },
+    ])
+  );
+  
+  const imageReferencesMap = new Map(
+    imageReferences.map((ref, index) => [
       ref.fullMatch,
       {
         anchorId: ref.anchorId,
@@ -64,14 +87,16 @@ export default function MarkdownRenderer({
             <h3 className="text-2xl font-semibold text-text-primary mb-2 mt-4" {...props} />
           ),
           p: ({ node, children, ...props }: any) => {
-            // Procesar children para detectar referencias
+            // Procesar children para detectar referencias (ecuaciones e imágenes)
             const processChildren = (children: any): any => {
               if (typeof children === 'string') {
-                // Buscar referencias en el texto
+                // Buscar referencias en el texto (ecuaciones e imágenes)
                 const parts: any[] = [];
                 let lastIndex = 0;
                 let match;
-                const refRegex = /\{\{eq:([^}|]+)\|([^}]+)\}\}/g;
+                
+                // Regex combinado para referencias de ecuaciones e imágenes
+                const refRegex = /\{\{(eq|img):([^}|]+)\|([^}]+)\}\}/g;
                 
                 while ((match = refRegex.exec(children)) !== null) {
                   // Añadir texto antes de la referencia
@@ -80,20 +105,32 @@ export default function MarkdownRenderer({
                   }
                   
                   // Procesar la referencia
-                  const [, path, linkText] = match;
+                  const [, refType, path, linkText] = match;
                   const pathParts = path.split('/');
                   const anchorId = pathParts.length === 2 ? pathParts[1].trim() : pathParts[0].trim();
                   const postSlug = pathParts.length === 2 ? pathParts[0].trim() : undefined;
                   
-                  parts.push(
-                    <EquationReference
-                      key={`ref-${match.index}`}
-                      anchorId={anchorId}
-                      postSlug={postSlug}
-                      linkText={linkText.trim()}
-                      currentSlug={currentSlug}
-                    />
-                  );
+                  if (refType === 'eq') {
+                    parts.push(
+                      <EquationReference
+                        key={`eq-ref-${match.index}`}
+                        anchorId={anchorId}
+                        postSlug={postSlug}
+                        linkText={linkText.trim()}
+                        currentSlug={currentSlug}
+                      />
+                    );
+                  } else if (refType === 'img') {
+                    parts.push(
+                      <ImageReference
+                        key={`img-ref-${match.index}`}
+                        anchorId={anchorId}
+                        postSlug={postSlug}
+                        linkText={linkText.trim()}
+                        currentSlug={currentSlug}
+                      />
+                    );
+                  }
                   
                   lastIndex = match.index + match[0].length;
                 }
@@ -205,8 +242,40 @@ export default function MarkdownRenderer({
               {...props}
             />
           ),
+          img: ({ node, src, alt, ...props }: any) => {
+            // Detectar si es una imagen con ancla
+            const anchorId = props['data-img-anchor'];
+            const description = props['data-img-desc'];
+            
+            if (anchorId && currentSlug) {
+              const imageAnchor = imageAnchorsMap.get(anchorId);
+              
+              if (imageAnchor) {
+                return (
+                  <ImageAnchor
+                    anchorId={anchorId}
+                    description={description || imageAnchor.description}
+                    imageUrl={src || imageAnchor.imageUrl}
+                    alt={alt || imageAnchor.altText}
+                    postSlug={currentSlug}
+                  />
+                );
+              }
+            }
+            
+            // Imagen normal sin ancla
+            return (
+              <img
+                src={src}
+                alt={alt || ''}
+                className="w-full h-auto rounded-lg my-4"
+                loading="lazy"
+                {...props}
+              />
+            );
+          },
           a: ({ node, href, className, ...props }: any) => {
-            // Detectar si es una referencia a ecuación
+            // Detectar si es una referencia a ecuación o imagen
             if (className === 'equation-reference' || href?.includes('#eq-')) {
               const anchorId = props['data-anchor'];
               const postSlug = props['data-post'];
@@ -221,6 +290,11 @@ export default function MarkdownRenderer({
                   />
                 );
               }
+            }
+            
+            if (href?.includes('#img-')) {
+              // Es una referencia a imagen, ya procesada en el componente p
+              return <a href={href} {...props} />;
             }
             
             // Enlaces normales

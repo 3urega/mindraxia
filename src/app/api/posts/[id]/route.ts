@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/get-session';
 import { z } from 'zod';
 import { syncPostEquations } from '@/lib/sync-equations';
+import { syncPostImageAnchors } from '@/lib/sync-images';
 
 /**
  * GET /api/posts/[id]
@@ -262,15 +263,19 @@ export async function PUT(
       },
     });
 
-    // Sincronizar ecuaciones si el contenido cambió
+    // Sincronizar ecuaciones e imágenes con anclas si el contenido cambió
     if (updateData.content !== undefined) {
       try {
         await syncPostEquations(id, updateData.content);
+        await syncPostImageAnchors(id, updateData.content);
       } catch (error) {
-        console.error('Error syncing equations (non-fatal):', error);
-        // No fallar la actualización del post si hay error sincronizando ecuaciones
+        console.error('Error syncing equations/images (non-fatal):', error);
+        // No fallar la actualización del post si hay error sincronizando
       }
     }
+
+    // Nota: revalidatePath no funciona en Route Handlers (API routes)
+    // El caché se desactiva con cache: 'no-store' en la página
 
     // Serializar fechas
     const serializedPost = {

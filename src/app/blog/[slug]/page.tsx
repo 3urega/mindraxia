@@ -22,26 +22,55 @@ interface Post {
 
 async function getPost(slug: string): Promise<Post | null> {
   try {
-    const baseUrl =
-      process.env.NODE_ENV === 'production'
-        ? process.env.NEXT_PUBLIC_URL || 'https://mindraxia.com'
-        : 'http://localhost:3000';
-
-    const url = `${baseUrl}/api/posts/slug/${slug}`;
-
-    const response = await fetch(url, {
-      next: { revalidate: 60 }, // ISR: revalidar cada 60 segundos
+    // Llamar directamente a Prisma en lugar de usar fetch para evitar problemas de caché
+    const { prisma } = await import('@/lib/prisma');
+    
+    const post = await prisma.post.findFirst({
+      where: {
+        slug: slug,
+        published: true,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        tags: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      throw new Error(`Failed to fetch post: ${response.statusText}`);
+    if (!post) {
+      return null;
     }
 
-    const post: Post = await response.json();
-    return post;
+    // Mapear a formato esperado
+    return {
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt,
+      content: post.content,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      publishedAt: post.publishedAt?.toISOString() ?? null,
+      author: {
+        id: post.author.id,
+        name: post.author.name,
+        email: post.author.email,
+      },
+      tags: post.tags.map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+      })),
+    };
   } catch (error) {
     console.error('Error fetching post:', error);
     return null;
