@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import ScrollToAnchor from '@/components/ScrollToAnchor';
+import FontSizeSelector from '@/components/FontSizeSelector';
+import SocialShareButtons from '@/components/SocialShareButtons';
 
 interface Post {
   id: string;
@@ -169,8 +171,21 @@ export default async function PostPage({
         style={{ backgroundColor: 'var(--border-glow)' }}
       />
 
+      {/* Selector de tamaño de fuente y compartir */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <SocialShareButtons 
+          title={post.title} 
+          url={`/blog/${post.slug}`}
+          description={post.excerpt || undefined}
+          author={post.author?.name}
+          date={displayDate ? formatDate(displayDate) : undefined}
+        />
+        <FontSizeSelector />
+      </div>
+
       {/* Contenido del post */}
       <div
+        data-blog-content
         className="rounded-lg border p-8"
         style={{
           borderColor: 'var(--border-glow)',

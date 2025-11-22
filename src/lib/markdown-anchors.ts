@@ -25,14 +25,17 @@ export function extractAnchors(content: string): EquationAnchor[] {
   
   // Regex para detectar: $${#eq:id|descripción: texto}...$$
   // También soporta: $${#eq:id}...$$ (sin descripción)
-  const anchorRegex = /\$\$\{#eq:([a-z0-9-]+)(?:\|descripción:\s*([^}]+))?\}([\s\S]*?)\$\$/g;
+  // El ID ahora puede contener espacios y otros caracteres, que se normalizarán
+  const anchorRegex = /\$\$\{#eq:([^}|]+)(?:\|descripción:\s*([^}]+))?\}([\s\S]*?)\$\$/g;
   
   let match;
   while ((match = anchorRegex.exec(content)) !== null) {
-    const [, anchorId, description, equation] = match;
+    const [, rawAnchorId, description, equation] = match;
+    // Normalizar ID: convertir a minúsculas, reemplazar espacios con guiones, eliminar caracteres especiales
+    const anchorId = rawAnchorId.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     
     anchors.push({
-      anchorId: anchorId.trim(),
+      anchorId: anchorId,
       description: description?.trim(),
       equation: equation.trim(),
       fullMatch: match[0],
@@ -85,16 +88,21 @@ export function extractReferences(content: string): EquationReference[] {
 export function preprocessAnchors(content: string): string {
   // Reemplazar ecuaciones con anclas por formato especial que react-markdown reconocerá como código
   // Mantenemos el formato de código pero añadimos un marcador especial
+  // El ID puede contener espacios y otros caracteres, que se normalizarán
   return content.replace(
-    /\$\$\{#eq:([a-z0-9-]+)(?:\|descripción:[^}]+)\}([\s\S]*?)\$\$/g,
-    (match, anchorId, equation) => {
+    /\$\$\{#eq:([^}|]+)(?:\|descripción:[^}]+)\}([\s\S]*?)\$\$/g,
+    (match, rawAnchorId, equation) => {
+      // Normalizar ID igual que en extractAnchors
+      const anchorId = rawAnchorId.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       // Crear un bloque de código con marcador especial que luego procesaremos
       return `\`\`\`math-anchor:${anchorId}\n${equation.trim()}\n\`\`\``;
     }
   ).replace(
-    /\$\$\{#eq:([a-z0-9-]+)\}([\s\S]*?)\$\$/g,
-    (match, anchorId, equation) => {
+    /\$\$\{#eq:([^}|]+)\}([\s\S]*?)\$\$/g,
+    (match, rawAnchorId, equation) => {
       // Sin descripción
+      // Normalizar ID igual que en extractAnchors
+      const anchorId = rawAnchorId.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       return `\`\`\`math-anchor:${anchorId}\n${equation.trim()}\n\`\`\``;
     }
   );

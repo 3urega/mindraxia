@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import { useFontSize, useFontFamily, type FontSize, type FontFamily } from './FontSizeSelector';
 import {
   extractAnchors,
   extractReferences,
@@ -47,6 +48,41 @@ export default function MarkdownRenderer({
   content,
   currentSlug,
 }: MarkdownRendererProps) {
+  const [fontSize, setFontSize] = useState<FontSize>('normal');
+  const [fontFamily, setFontFamily] = useState<FontFamily>('sans-serif');
+  
+  useEffect(() => {
+    // Cargar preferencias iniciales desde localStorage
+    if (typeof window !== 'undefined') {
+      const savedSize = localStorage.getItem('blog-font-size');
+      if (savedSize && (savedSize === 'small' || savedSize === 'normal' || savedSize === 'large')) {
+        setFontSize(savedSize);
+      }
+      
+      const savedFamily = localStorage.getItem('blog-font-family');
+      if (savedFamily && (savedFamily === 'roboto' || savedFamily === 'sans-serif' || savedFamily === 'montserrat')) {
+        setFontFamily(savedFamily);
+      }
+    }
+    
+    // Escuchar cambios de tamaño de fuente
+    const handleFontSizeChange = (e: CustomEvent<FontSize>) => {
+      setFontSize(e.detail);
+    };
+    
+    // Escuchar cambios de familia de fuente
+    const handleFontFamilyChange = (e: CustomEvent<FontFamily>) => {
+      setFontFamily(e.detail);
+    };
+    
+    window.addEventListener('fontSizeChanged', handleFontSizeChange as EventListener);
+    window.addEventListener('fontFamilyChanged', handleFontFamilyChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('fontSizeChanged', handleFontSizeChange as EventListener);
+      window.removeEventListener('fontFamilyChanged', handleFontFamilyChange as EventListener);
+    };
+  }, []);
   // Preprocesar contenido: extraer anclas y referencias ANTES de modificar el contenido
   const anchors = extractAnchors(content);
   const references = extractReferences(content);
@@ -122,9 +158,23 @@ export default function MarkdownRenderer({
     ])
   );
 
+  // Obtener clases de tamaño y familia de fuente
+  const fontSizeClass = fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base';
+  const fontFamilyClass = fontFamily === 'roboto' 
+    ? '' 
+    : fontFamily === 'montserrat' 
+    ? '' 
+    : 'font-sans';
+  
+  const fontFamilyStyle = fontFamily === 'montserrat' 
+    ? { fontFamily: 'var(--font-montserrat), sans-serif' } 
+    : fontFamily === 'roboto'
+    ? { fontFamily: 'var(--font-roboto), sans-serif' }
+    : {};
+
   return (
-    <div className="prose prose-invert max-w-none">
-          <ReactMarkdown
+    <div className={`prose prose-invert max-w-none ${fontSizeClass} ${fontFamilyClass}`} style={fontFamilyStyle}>
+      <ReactMarkdown
             remarkPlugins={[remarkMath, remarkGfm]}
             rehypePlugins={[[rehypeKatex, { 
               throwOnError: false,
