@@ -20,18 +20,20 @@ model User {
 }
 
 model Post {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
-  slug        String     @unique
+  slug        String       @unique
   excerpt     String?
-  content     String     // Markdown
-  published   Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  content     String       // Markdown
+  published   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   publishedAt DateTime?
   authorId    String
-  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   tags        Tag[]
+  categories  Category[]
+  subcategories Subcategory[]
   equations   Equation[]
   images      Image[]
   definitions Definition[]
@@ -45,6 +47,34 @@ model Tag {
   id    String @id @default(cuid())
   name  String @unique
   posts Post[]
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  subcategories Subcategory[]
+  posts        Post[]
+  
+  @@index([slug])
+}
+
+model Subcategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       Post[]
+  
+  @@index([slug])
+  @@index([categoryId])
 }
 
 model Equation {

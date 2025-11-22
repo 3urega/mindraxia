@@ -58,6 +58,27 @@ export async function GET(
             name: true,
           },
         },
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -85,6 +106,8 @@ export async function GET(
       publishedAt: post.publishedAt?.toISOString() ?? null,
       author: post.author,
       tags: post.tags,
+      categories: post.categories,
+      subcategories: post.subcategories,
     };
 
     return NextResponse.json(serializedPost, { status: 200 });
@@ -110,6 +133,8 @@ const updatePostSchema = z.object({
   content: z.string().min(10, 'El contenido debe tener al menos 10 caracteres').optional(),
   excerpt: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  categoryIds: z.array(z.string()).optional(),
+  subcategoryIds: z.array(z.string()).optional(),
   published: z.boolean().optional(),
 });
 
@@ -146,7 +171,11 @@ export async function PUT(
     // Buscar post existente
     const existingPost = await prisma.post.findUnique({
       where: { id },
-      include: { tags: true },
+      include: { 
+        tags: true,
+        categories: true,
+        subcategories: true,
+      },
     });
 
     if (!existingPost) {
@@ -237,6 +266,48 @@ export async function PUT(
       );
     }
 
+    // Manejar categorías
+    let categoryConnections: { id: string }[] = [];
+    if (updateData.categoryIds !== undefined) {
+      categoryConnections = (updateData.categoryIds || []).map((catId: string) => ({ id: catId }));
+      if (categoryConnections.length > 0) {
+        // Verificar que todas las categorías existen
+        const existingCategories = await prisma.category.findMany({
+          where: { id: { in: updateData.categoryIds || [] } },
+        });
+        if (existingCategories.length !== updateData.categoryIds?.length) {
+          return NextResponse.json(
+            {
+              error: 'Bad Request',
+              message: 'Una o más categorías no existen',
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // Manejar subcategorías
+    let subcategoryConnections: { id: string }[] = [];
+    if (updateData.subcategoryIds !== undefined) {
+      subcategoryConnections = (updateData.subcategoryIds || []).map((subId: string) => ({ id: subId }));
+      if (subcategoryConnections.length > 0) {
+        // Verificar que todas las subcategorías existen
+        const existingSubcategories = await prisma.subcategory.findMany({
+          where: { id: { in: updateData.subcategoryIds || [] } },
+        });
+        if (existingSubcategories.length !== updateData.subcategoryIds?.length) {
+          return NextResponse.json(
+            {
+              error: 'Bad Request',
+              message: 'Una o más subcategorías no existen',
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Actualizar el post
     const updatedPost = await prisma.post.update({
       where: { id },
@@ -245,6 +316,16 @@ export async function PUT(
         ...(updateData.tags !== undefined && {
           tags: {
             set: tagConnections, // Reemplazar todos los tags
+          },
+        }),
+        ...(updateData.categoryIds !== undefined && {
+          categories: {
+            set: categoryConnections, // Reemplazar todas las categorías
+          },
+        }),
+        ...(updateData.subcategoryIds !== undefined && {
+          subcategories: {
+            set: subcategoryConnections, // Reemplazar todas las subcategorías
           },
         }),
       },
@@ -294,6 +375,8 @@ export async function PUT(
       publishedAt: updatedPost.publishedAt?.toISOString() ?? null,
       author: updatedPost.author,
       tags: updatedPost.tags,
+      categories: updatedPost.categories,
+      subcategories: updatedPost.subcategories,
     };
 
     return NextResponse.json(serializedPost, { status: 200 });

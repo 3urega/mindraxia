@@ -36,6 +36,27 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         updatedAt: 'desc',
@@ -59,6 +80,21 @@ export async function GET(request: NextRequest) {
       tags: post.tags.map((tag) => ({
         id: tag.id,
         name: tag.name,
+      })),
+      categories: post.categories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+      })),
+      subcategories: post.subcategories.map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+        slug: sub.slug,
+        category: {
+          id: sub.category.id,
+          name: sub.category.name,
+          slug: sub.category.slug,
+        },
       })),
     }));
 

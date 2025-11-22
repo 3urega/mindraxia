@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import MarkdownEditor from '@/components/MarkdownEditor';
+import CategorySelector from '@/components/CategorySelector';
 import { generateSlug } from '@/lib/utils';
 
 export default function NewPostPage() {
@@ -13,6 +14,8 @@ export default function NewPostPage() {
   const [excerpt, setExcerpt] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [subcategoryIds, setSubcategoryIds] = useState<string[]>([]);
   const [published, setPublished] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -67,6 +70,8 @@ export default function NewPostPage() {
           excerpt: excerpt || undefined,
           content,
           tags: tagsArray,
+          categoryIds,
+          subcategoryIds,
           published,
         }),
       });
@@ -197,6 +202,22 @@ export default function NewPostPage() {
             Soporta markdown completo y fórmulas matemáticas LaTeX. Usa los botones de acción rápida para insertar fórmulas. 
             Para fórmulas numeradas, usa: <code className="px-1 py-0.5 rounded bg-space-primary text-star-cyan text-xs">$$\tag{1} fórmula $$</code>
           </p>
+        </div>
+
+        {/* Categorías y Subcategorías */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Categorías y Subcategorías (opcional)
+          </label>
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+            <CategorySelector
+              selectedCategoryIds={categoryIds}
+              selectedSubcategoryIds={subcategoryIds}
+              onCategoryChange={setCategoryIds}
+              onSubcategoryChange={setSubcategoryIds}
+              allowCreate={true}
+            />
+          </div>
         </div>
 
         {/* Tags */}

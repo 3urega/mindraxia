@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 
 interface PostCardProps {
@@ -5,10 +7,12 @@ interface PostCardProps {
   excerpt?: string;
   date?: string;
   tags?: string[];
+  categories?: Array<{ id: string; name: string; slug: string }>;
+  subcategories?: Array<{ id: string; name: string; slug: string; category: { id: string; name: string; slug: string } }>;
   slug: string;
 }
 
-export default function PostCard({ title, excerpt, date, tags, slug }: PostCardProps) {
+export default function PostCard({ title, excerpt, date, tags, categories = [], subcategories = [], slug }: PostCardProps) {
   return (
     <Link
       href={`/blog/${slug}`}
@@ -31,17 +35,55 @@ export default function PostCard({ title, excerpt, date, tags, slug }: PostCardP
           </p>
         )}
 
-        {/* Metadata: Fecha y Tags */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+        {/* Metadata: Fecha, Categorías, Subcategorías y Tags */}
+        <div className="space-y-3">
           {date && (
-            <time dateTime={date}>
-              {new Date(date).toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </time>
+            <div className="text-sm text-text-muted">
+              <time dateTime={date}>
+                {new Date(date).toLocaleDateString('es-ES', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+            </div>
           )}
+          
+          {/* Categorías y Subcategorías */}
+          {(categories.length > 0 || subcategories.length > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {categories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/blog?category=${category.slug}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-star-cyan/10"
+                  style={{
+                    borderColor: 'var(--border-glow)',
+                    color: 'var(--star-cyan)',
+                  }}
+                >
+                  {category.name}
+                </Link>
+              ))}
+              {subcategories.map((subcategory) => (
+                <Link
+                  key={subcategory.id}
+                  href={`/blog?subcategory=${subcategory.slug}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-star-cyan/10"
+                  style={{
+                    borderColor: 'var(--border-glow)',
+                    color: 'var(--nebula-purple)',
+                  }}
+                >
+                  {subcategory.category.name} &gt; {subcategory.name}
+                </Link>
+              ))}
+            </div>
+          )}
+          
+          {/* Tags */}
           {tags && tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {tags.map((tag, index) => (

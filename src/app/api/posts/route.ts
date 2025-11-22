@@ -32,6 +32,27 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
       },
       orderBy: [
         {
@@ -59,6 +80,21 @@ export async function GET(request: NextRequest) {
       tags: post.tags.map((tag) => ({
         id: tag.id,
         name: tag.name,
+      })),
+      categories: post.categories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+      })),
+      subcategories: post.subcategories.map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+        slug: sub.slug,
+        category: {
+          id: sub.category.id,
+          name: sub.category.name,
+          slug: sub.category.slug,
+        },
       })),
     }));
 
@@ -91,6 +127,8 @@ const createPostSchema = z.object({
   content: z.string().min(10, 'El contenido debe tener al menos 10 caracteres'),
   excerpt: z.string().optional(),
   tags: z.array(z.string()).optional().default([]),
+  categoryIds: z.array(z.string()).optional().default([]),
+  subcategoryIds: z.array(z.string()).optional().default([]),
   published: z.boolean().default(false),
 });
 
@@ -123,7 +161,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, slug, content, excerpt, tags, published } = validationResult.data;
+    const { title, slug, content, excerpt, tags, categoryIds, subcategoryIds, published } = validationResult.data;
 
     // Verificar si el slug ya existe
     const existingPost = await prisma.post.findUnique({
@@ -153,6 +191,42 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    // Validar y conectar categorías
+    const categoryConnections = (categoryIds || []).map((catId: string) => ({ id: catId }));
+    if (categoryConnections.length > 0) {
+      // Verificar que todas las categorías existen
+      const existingCategories = await prisma.category.findMany({
+        where: { id: { in: categoryIds || [] } },
+      });
+      if (existingCategories.length !== categoryIds?.length) {
+        return NextResponse.json(
+          {
+            error: 'Bad Request',
+            message: 'Una o más categorías no existen',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validar y conectar subcategorías
+    const subcategoryConnections = (subcategoryIds || []).map((subId: string) => ({ id: subId }));
+    if (subcategoryConnections.length > 0) {
+      // Verificar que todas las subcategorías existen
+      const existingSubcategories = await prisma.subcategory.findMany({
+        where: { id: { in: subcategoryIds || [] } },
+      });
+      if (existingSubcategories.length !== subcategoryIds?.length) {
+        return NextResponse.json(
+          {
+            error: 'Bad Request',
+            message: 'Una o más subcategorías no existen',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Crear el post
     const post = await prisma.post.create({
       data: {
@@ -165,6 +239,12 @@ export async function POST(request: NextRequest) {
         authorId: user.id,
         tags: {
           connect: tagConnections,
+        },
+        categories: {
+          connect: categoryConnections,
+        },
+        subcategories: {
+          connect: subcategoryConnections,
         },
       },
       include: {
@@ -179,6 +259,27 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
           },
         },
       },
@@ -211,6 +312,8 @@ export async function POST(request: NextRequest) {
       publishedAt: post.publishedAt?.toISOString() ?? null,
       author: post.author,
       tags: post.tags,
+      categories: post.categories,
+      subcategories: post.subcategories,
     };
 
     return NextResponse.json(serializedPost, { status: 201 });

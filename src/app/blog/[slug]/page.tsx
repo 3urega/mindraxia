@@ -20,6 +20,8 @@ interface Post {
     email: string;
   };
   tags: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug: string }>;
+  subcategories: Array<{ id: string; name: string; slug: string; category: { id: string; name: string; slug: string } }>;
 }
 
 async function getPost(slug: string): Promise<Post | null> {
@@ -44,6 +46,27 @@ async function getPost(slug: string): Promise<Post | null> {
           select: {
             id: true,
             name: true,
+          },
+        },
+        categories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subcategories: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
           },
         },
       },
@@ -71,6 +94,21 @@ async function getPost(slug: string): Promise<Post | null> {
       tags: post.tags.map((tag) => ({
         id: tag.id,
         name: tag.name,
+      })),
+      categories: post.categories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+      })),
+      subcategories: post.subcategories.map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+        slug: sub.slug,
+        category: {
+          id: sub.category.id,
+          name: sub.category.name,
+          slug: sub.category.slug,
+        },
       })),
     };
   } catch (error) {
@@ -140,6 +178,38 @@ export default async function PostPage({
             </span>
           )}
         </div>
+
+        {/* Categorías y Subcategorías */}
+        {(post.categories.length > 0 || post.subcategories.length > 0) && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {post.categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/blog?category=${category.slug}`}
+                className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-star-cyan/10"
+                style={{
+                  borderColor: 'var(--border-glow)',
+                  color: 'var(--star-cyan)',
+                }}
+              >
+                {category.name}
+              </Link>
+            ))}
+            {post.subcategories.map((subcategory) => (
+              <Link
+                key={subcategory.id}
+                href={`/blog?subcategory=${subcategory.slug}`}
+                className="rounded-full border px-3 py-1 text-xs transition-colors hover:bg-star-cyan/10"
+                style={{
+                  borderColor: 'var(--border-glow)',
+                  color: 'var(--nebula-purple)',
+                }}
+              >
+                {subcategory.category.name} &gt; {subcategory.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (

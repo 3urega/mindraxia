@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import MarkdownEditor from '@/components/MarkdownEditor';
+import CategorySelector from '@/components/CategorySelector';
 import { generateSlug } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -14,6 +15,8 @@ interface Post {
   content: string;
   published: boolean;
   tags: Array<{ id: string; name: string }>;
+  categories?: Array<{ id: string; name: string; slug: string }>;
+  subcategories?: Array<{ id: string; name: string; slug: string; category: { id: string; name: string; slug: string } }>;
 }
 
 export default function EditPostPage() {
@@ -59,6 +62,8 @@ export default function EditPostPage() {
   const [excerpt, setExcerpt] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [subcategoryIds, setSubcategoryIds] = useState<string[]>([]);
   const [published, setPublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -133,6 +138,8 @@ export default function EditPostPage() {
       setContent(data.content);
       setPublished(data.published);
       setTags(data.tags.map((tag) => tag.name).join(', '));
+      setCategoryIds(data.categories?.map((cat) => cat.id) || []);
+      setSubcategoryIds(data.subcategories?.map((sub) => sub.id) || []);
       setError(''); // Asegurar que no hay error
     } catch (error) {
       console.error('[EditPostPage] Error fetching post:', error);
@@ -213,6 +220,8 @@ export default function EditPostPage() {
           excerpt: excerpt || undefined,
           content,
           tags: tagsArray,
+          categoryIds,
+          subcategoryIds,
           published,
         }),
       });
@@ -437,6 +446,22 @@ export default function EditPostPage() {
             postId={postId}
             currentPostSlug={slug}
           />
+        </div>
+
+        {/* Categorías y Subcategorías */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Categorías y Subcategorías (opcional)
+          </label>
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+            <CategorySelector
+              selectedCategoryIds={categoryIds}
+              selectedSubcategoryIds={subcategoryIds}
+              onCategoryChange={setCategoryIds}
+              onSubcategoryChange={setSubcategoryIds}
+              allowCreate={true}
+            />
+          </div>
         </div>
 
         {/* Tags */}
