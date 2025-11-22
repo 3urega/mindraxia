@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/get-session';
 import { z } from 'zod';
 import { syncPostEquations } from '@/lib/sync-equations';
 import { syncPostImageAnchors } from '@/lib/sync-images';
+import { syncPostDefinitions } from '@/lib/sync-definitions';
+import { syncPostTheorems } from '@/lib/sync-theorems';
 
 /**
  * GET /api/posts/[id]
@@ -263,13 +265,15 @@ export async function PUT(
       },
     });
 
-    // Sincronizar ecuaciones e imágenes con anclas si el contenido cambió
+    // Sincronizar ecuaciones, imágenes, definiciones y teoremas con anclas si el contenido cambió
     if (updateData.content !== undefined) {
       try {
         await syncPostEquations(id, updateData.content);
         await syncPostImageAnchors(id, updateData.content);
+        await syncPostDefinitions(id, updateData.content);
+        await syncPostTheorems(id, updateData.content);
       } catch (error) {
-        console.error('Error syncing equations/images (non-fatal):', error);
+        console.error('Error syncing equations/images/definitions/theorems (non-fatal):', error);
         // No fallar la actualización del post si hay error sincronizando
       }
     }

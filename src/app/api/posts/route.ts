@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { generateSlug } from '@/lib/utils';
 import { syncPostEquations } from '@/lib/sync-equations';
 import { syncPostImageAnchors } from '@/lib/sync-images';
+import { syncPostDefinitions } from '@/lib/sync-definitions';
+import { syncPostTheorems } from '@/lib/sync-theorems';
 
 /**
  * GET /api/posts
@@ -182,12 +184,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Sincronizar ecuaciones e imágenes con anclas del post
+    // Sincronizar ecuaciones, imágenes, definiciones y teoremas con anclas del post
     try {
       await syncPostEquations(post.id, content);
       await syncPostImageAnchors(post.id, content);
+      await syncPostDefinitions(post.id, content);
+      await syncPostTheorems(post.id, content);
     } catch (error) {
-      console.error('Error syncing equations/images (non-fatal):', error);
+      console.error('Error syncing equations/images/definitions/theorems (non-fatal):', error);
       // No fallar la creación del post si hay error sincronizando
     }
 

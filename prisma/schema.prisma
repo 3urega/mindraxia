@@ -34,6 +34,8 @@ model Post {
   tags        Tag[]
   equations   Equation[]
   images      Image[]
+  definitions Definition[]
+  theorems    Theorem[]
   
   @@index([slug])
   @@index([published])
@@ -77,6 +79,38 @@ model Image {
   updatedAt   DateTime @updatedAt
   
   @@unique([postId, anchorId]) // Un anchorId único por post (si tiene ancla)
+  @@index([postId])
+  @@index([anchorId])
+}
+
+model Definition {
+  id          String   @id @default(cuid())
+  anchorId    String   // ID único del anchor (ej: "def-continuidad")
+  description String?  // Descripción para búsquedas con IA
+  content     String   // Contenido markdown de la definición
+  number      Int      // Número automático de la definición en el post
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([postId, anchorId]) // Un anchorId único por post
+  @@index([postId])
+  @@index([anchorId])
+}
+
+model Theorem {
+  id          String   @id @default(cuid())
+  anchorId    String   // ID único del anchor (ej: "thm-pitagoras")
+  description String?  // Descripción para búsquedas con IA
+  content     String   // Contenido markdown del teorema
+  number      Int      // Número automático del teorema en el post
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([postId, anchorId]) // Un anchorId único por post
   @@index([postId])
   @@index([anchorId])
 }

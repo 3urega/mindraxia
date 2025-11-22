@@ -19,10 +19,24 @@ import {
   getImageAnchorHtmlId,
   preprocessImageAnchors,
 } from '@/lib/image-anchors';
+import {
+  extractDefinitionAnchors,
+  extractDefinitionReferences,
+  preprocessDefinitionAnchors,
+} from '@/lib/definition-anchors';
+import {
+  extractTheoremAnchors,
+  extractTheoremReferences,
+  preprocessTheoremAnchors,
+} from '@/lib/theorem-anchors';
 import EquationAnchor from './EquationAnchor';
 import EquationReference from './EquationReference';
 import ImageAnchor from './ImageAnchor';
 import ImageReference from './ImageReference';
+import DefinitionAnchor from './DefinitionAnchor';
+import DefinitionReference from './DefinitionReference';
+import TheoremAnchor from './TheoremAnchor';
+import TheoremReference from './TheoremReference';
 
 interface MarkdownRendererProps {
   content: string;
@@ -38,14 +52,28 @@ export default function MarkdownRenderer({
   const references = extractReferences(content);
   const imageAnchors = extractImageAnchors(content);
   const imageReferences = extractImageReferences(content);
+  const definitionAnchors = extractDefinitionAnchors(content);
+  const definitionReferences = extractDefinitionReferences(content);
+  const theoremAnchors = extractTheoremAnchors(content);
+  const theoremReferences = extractTheoremReferences(content);
   
   // Crear mapas de anclas por ID para acceso rápido
   const anchorsMap = new Map(anchors.map(a => [a.anchorId, a]));
   const imageAnchorsMap = new Map(imageAnchors.map(a => [a.anchorId, a]));
   
-  // Preprocesar markdown: convertir ecuaciones e imágenes con anclas
+  // Crear mapas de definiciones y teoremas con números basados en orden de aparición
+  const definitionAnchorsMap = new Map(
+    definitionAnchors.map((def, index) => [def.anchorId, { ...def, number: index + 1 }])
+  );
+  const theoremAnchorsMap = new Map(
+    theoremAnchors.map((thm, index) => [thm.anchorId, { ...thm, number: index + 1 }])
+  );
+  
+  // Preprocesar markdown: convertir ecuaciones, imágenes, definiciones y teoremas con anclas
   let processedContent = preprocessAnchors(content);
   processedContent = preprocessImageAnchors(processedContent);
+  processedContent = preprocessDefinitionAnchors(processedContent);
+  processedContent = preprocessTheoremAnchors(processedContent);
   
   // Crear mapas de referencias para acceso rápido durante el renderizado
   const referencesMap = new Map(
@@ -61,6 +89,28 @@ export default function MarkdownRenderer({
   
   const imageReferencesMap = new Map(
     imageReferences.map((ref, index) => [
+      ref.fullMatch,
+      {
+        anchorId: ref.anchorId,
+        postSlug: ref.postSlug,
+        linkText: ref.linkText,
+      },
+    ])
+  );
+  
+  const definitionReferencesMap = new Map(
+    definitionReferences.map((ref) => [
+      ref.fullMatch,
+      {
+        anchorId: ref.anchorId,
+        postSlug: ref.postSlug,
+        linkText: ref.linkText,
+      },
+    ])
+  );
+  
+  const theoremReferencesMap = new Map(
+    theoremReferences.map((ref) => [
       ref.fullMatch,
       {
         anchorId: ref.anchorId,
@@ -95,8 +145,8 @@ export default function MarkdownRenderer({
                 let lastIndex = 0;
                 let match;
                 
-                // Regex combinado para referencias de ecuaciones e imágenes
-                const refRegex = /\{\{(eq|img):([^}|]+)\|([^}]+)\}\}/g;
+                // Regex combinado para referencias de ecuaciones, imágenes, definiciones y teoremas
+                const refRegex = /\{\{(eq|img|def|thm):([^}|]+)\|([^}]+)\}\}/g;
                 
                 while ((match = refRegex.exec(children)) !== null) {
                   // Añadir texto antes de la referencia
@@ -124,6 +174,26 @@ export default function MarkdownRenderer({
                     parts.push(
                       <ImageReference
                         key={`img-ref-${match.index}`}
+                        anchorId={anchorId}
+                        postSlug={postSlug}
+                        linkText={linkText.trim()}
+                        currentSlug={currentSlug}
+                      />
+                    );
+                  } else if (refType === 'def') {
+                    parts.push(
+                      <DefinitionReference
+                        key={`def-ref-${match.index}`}
+                        anchorId={anchorId}
+                        postSlug={postSlug}
+                        linkText={linkText.trim()}
+                        currentSlug={currentSlug}
+                      />
+                    );
+                  } else if (refType === 'thm') {
+                    parts.push(
+                      <TheoremReference
+                        key={`thm-ref-${match.index}`}
                         anchorId={anchorId}
                         postSlug={postSlug}
                         linkText={linkText.trim()}
@@ -181,13 +251,16 @@ export default function MarkdownRenderer({
               );
             }
             
-            // Detectar si es un bloque de código especial para ecuaciones con anclas
-            // El formato es: ```math-anchor:anchorId
+            // Detectar si es un bloque de código especial para ecuaciones, definiciones o teoremas con anclas
+            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, o ```theorem-anchor:anchorId
             const language = className?.replace('language-', '') || '';
-            const anchorMatch = language.match(/^math-anchor:(.+)$/);
+            const mathAnchorMatch = language.match(/^math-anchor:(.+)$/);
+            const definitionAnchorMatch = language.match(/^definition-anchor:(.+)$/);
+            const theoremAnchorMatch = language.match(/^theorem-anchor:(.+)$/);
             
-            if (anchorMatch && currentSlug) {
-              const anchorId = anchorMatch[1];
+            // Procesar ecuaciones
+            if (mathAnchorMatch) {
+              const anchorId = mathAnchorMatch[1];
               const anchor = anchorsMap.get(anchorId);
               
               if (anchor) {
@@ -206,11 +279,14 @@ export default function MarkdownRenderer({
                   renderedEquation = `<span class="text-red-500">Error rendering equation: ${equationContent}</span>`;
                 }
                 
+                // Usar currentSlug o un slug temporal para el preview
+                const slug = currentSlug || 'preview';
+                
                 return (
                   <EquationAnchor
                     anchorId={anchorId}
                     description={anchor.description}
-                    postSlug={currentSlug}
+                    postSlug={slug}
                   >
                     <div 
                       className="katex-display"
@@ -221,6 +297,88 @@ export default function MarkdownRenderer({
                   </EquationAnchor>
                 );
               }
+            }
+            
+            // Procesar definiciones
+            if (definitionAnchorMatch) {
+              const anchorId = definitionAnchorMatch[1];
+              const anchor = definitionAnchorsMap.get(anchorId);
+              
+              // El contenido del código es el markdown de la definición
+              // Procesar children que puede ser string o array
+              let definitionContent = '';
+              if (Array.isArray(children)) {
+                definitionContent = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                definitionContent = String(children || '').trim();
+              }
+              definitionContent = definitionContent.trim();
+              
+              // Usar currentSlug o un slug temporal para el preview
+              const slug = currentSlug || 'preview';
+              
+              // Si no hay anchor en el mapa, usar valores por defecto (para preview)
+              const number = anchor?.number || definitionAnchors.findIndex(d => d.anchorId === anchorId) + 1 || 1;
+              const description = anchor?.description;
+              
+              return (
+                <DefinitionAnchor
+                  anchorId={anchorId}
+                  description={description}
+                  number={number}
+                  postSlug={slug}
+                >
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath, remarkGfm]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {definitionContent}
+                  </ReactMarkdown>
+                </DefinitionAnchor>
+              );
+            }
+            
+            // Procesar teoremas
+            if (theoremAnchorMatch) {
+              const anchorId = theoremAnchorMatch[1];
+              const anchor = theoremAnchorsMap.get(anchorId);
+              
+              // El contenido del código es el markdown del teorema
+              // Procesar children que puede ser string o array
+              let theoremContent = '';
+              if (Array.isArray(children)) {
+                theoremContent = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                theoremContent = String(children || '').trim();
+              }
+              theoremContent = theoremContent.trim();
+              
+              // Usar currentSlug o un slug temporal para el preview
+              const slug = currentSlug || 'preview';
+              
+              // Si no hay anchor en el mapa, usar valores por defecto (para preview)
+              const number = anchor?.number || theoremAnchors.findIndex(t => t.anchorId === anchorId) + 1 || 1;
+              const description = anchor?.description;
+              
+              return (
+                <TheoremAnchor
+                  anchorId={anchorId}
+                  description={description}
+                  number={number}
+                  postSlug={slug}
+                >
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath, remarkGfm]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {theoremContent}
+                  </ReactMarkdown>
+                </TheoremAnchor>
+              );
             }
             
             return (
