@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       orderBy: [
         {
           post: {
-            publishedAt: 'desc',
+            createdAt: 'desc', // Usar createdAt en lugar de publishedAt que puede ser null
           },
         },
         {
@@ -94,12 +94,18 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching definitions:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
     return NextResponse.json(
       {
         error: 'Internal Server Error',
-        message: 'Failed to fetch definitions',
+        message: error?.message || 'Failed to fetch definitions',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
       },
       { status: 500 }
     );

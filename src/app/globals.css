@@ -142,3 +142,18 @@ body {
   }
 }
 
+/* Estilos para select con fondo oscuro opaco */
+select {
+  background-color: rgb(26, 26, 46) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+select option {
+  background-color: rgb(26, 26, 46) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+select option:hover {
+  background-color: var(--color-space-secondary) !important;
+}
+

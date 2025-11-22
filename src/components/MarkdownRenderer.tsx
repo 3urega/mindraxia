@@ -57,8 +57,10 @@ export default function MarkdownRenderer({
   const theoremAnchors = extractTheoremAnchors(content);
   const theoremReferences = extractTheoremReferences(content);
   
-  // Crear mapas de anclas por ID para acceso rápido
-  const anchorsMap = new Map(anchors.map(a => [a.anchorId, a]));
+  // Crear mapas de anclas por ID para acceso rápido, con números basados en orden de aparición
+  const anchorsMap = new Map(
+    anchors.map((eq, index) => [eq.anchorId, { ...eq, number: index + 1 }])
+  );
   const imageAnchorsMap = new Map(imageAnchors.map(a => [a.anchorId, a]));
   
   // Crear mapas de definiciones y teoremas con números basados en orden de aparición
@@ -122,10 +124,13 @@ export default function MarkdownRenderer({
 
   return (
     <div className="prose prose-invert max-w-none">
-      <ReactMarkdown
-        remarkPlugins={[remarkMath, remarkGfm]}
-        rehypePlugins={[rehypeKatex]}
-        components={{
+          <ReactMarkdown
+            remarkPlugins={[remarkMath, remarkGfm]}
+            rehypePlugins={[[rehypeKatex, { 
+              throwOnError: false,
+              strict: false,
+            }]]}
+            components={{
           // Estilos personalizados para elementos markdown
           h1: ({ node, ...props }) => (
             <h1 className="text-4xl font-bold text-text-primary mb-4 mt-8" {...props} />
@@ -263,40 +268,52 @@ export default function MarkdownRenderer({
               const anchorId = mathAnchorMatch[1];
               const anchor = anchorsMap.get(anchorId);
               
-              if (anchor) {
-                // El contenido del código es la ecuación LaTeX (sin los $$)
-                const equationContent = String(children?.[0] || '').trim();
-                
-                // Renderizar la ecuación con KaTeX
-                let renderedEquation = '';
-                try {
-                  renderedEquation = katex.renderToString(equationContent, {
-                    displayMode: true,
-                    throwOnError: false,
-                  });
-                } catch (error) {
-                  console.error('Error rendering equation:', error);
-                  renderedEquation = `<span class="text-red-500">Error rendering equation: ${equationContent}</span>`;
-                }
-                
-                // Usar currentSlug o un slug temporal para el preview
-                const slug = currentSlug || 'preview';
-                
-                return (
-                  <EquationAnchor
-                    anchorId={anchorId}
-                    description={anchor.description}
-                    postSlug={slug}
-                  >
-                    <div 
-                      className="katex-display"
-                      dangerouslySetInnerHTML={{
-                        __html: renderedEquation,
-                      }}
-                    />
-                  </EquationAnchor>
-                );
+              // El contenido del código es la ecuación LaTeX (sin los $$)
+              let equationContent = '';
+              if (Array.isArray(children)) {
+                equationContent = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                equationContent = String(children || '').trim();
               }
+              equationContent = equationContent.trim();
+              
+              // Renderizar la ecuación con KaTeX
+              let renderedEquation = '';
+              try {
+                renderedEquation = katex.renderToString(equationContent, {
+                  displayMode: true,
+                  throwOnError: false,
+                });
+              } catch (error) {
+                console.error('Error rendering equation:', error);
+                renderedEquation = `<span class="text-red-500">Error rendering equation: ${equationContent}</span>`;
+              }
+              
+              // Usar currentSlug o un slug temporal para el preview
+              const slug = currentSlug || 'preview';
+              
+              // Obtener el número de la ecuación (basado en orden de aparición)
+              // Si no está en el mapa, calcularlo basándose en el índice
+              const equationNumber = anchor?.number || anchors.findIndex(eq => eq.anchorId === anchorId) + 1 || 1;
+              const description = anchor?.description;
+              
+              return (
+                <EquationAnchor
+                  anchorId={anchorId}
+                  description={description}
+                  number={equationNumber}
+                  postSlug={slug}
+                >
+                  <div 
+                    className="katex-display"
+                    dangerouslySetInnerHTML={{
+                      __html: renderedEquation,
+                    }}
+                  />
+                </EquationAnchor>
+              );
             }
             
             // Procesar definiciones
@@ -316,6 +333,13 @@ export default function MarkdownRenderer({
               }
               definitionContent = definitionContent.trim();
               
+              // Preprocesar contenido: limpiar problemas comunes de LaTeX
+              // Eliminar `\\` al final de líneas que causan problemas en LaTeX display mode
+              // Esto se hace antes de que react-markdown procese el contenido
+              definitionContent = definitionContent
+                .replace(/\\+$/gm, '') // Eliminar \\ al final de líneas
+                .replace(/\\newline\s*$/gm, ''); // Eliminar \newline al final de líneas
+              
               // Usar currentSlug o un slug temporal para el preview
               const slug = currentSlug || 'preview';
               
@@ -332,7 +356,10 @@ export default function MarkdownRenderer({
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkMath, remarkGfm]}
-                    rehypePlugins={[rehypeKatex]}
+                    rehypePlugins={[[rehypeKatex, { 
+                      throwOnError: false,
+                      strict: false,
+                    }]]}
                   >
                     {definitionContent}
                   </ReactMarkdown>
@@ -357,6 +384,13 @@ export default function MarkdownRenderer({
               }
               theoremContent = theoremContent.trim();
               
+              // Preprocesar contenido: limpiar problemas comunes de LaTeX
+              // Eliminar `\\` al final de líneas que causan problemas en LaTeX display mode
+              // Esto se hace antes de que react-markdown procese el contenido
+              theoremContent = theoremContent
+                .replace(/\\+$/gm, '') // Eliminar \\ al final de líneas
+                .replace(/\\newline\s*$/gm, ''); // Eliminar \newline al final de líneas
+              
               // Usar currentSlug o un slug temporal para el preview
               const slug = currentSlug || 'preview';
               
@@ -373,7 +407,10 @@ export default function MarkdownRenderer({
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkMath, remarkGfm]}
-                    rehypePlugins={[rehypeKatex]}
+                    rehypePlugins={[[rehypeKatex, { 
+                      throwOnError: false,
+                      strict: false,
+                    }]]}
                   >
                     {theoremContent}
                   </ReactMarkdown>

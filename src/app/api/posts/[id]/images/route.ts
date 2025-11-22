@@ -104,6 +104,7 @@ export async function GET(
           postSlug: post.slug,
           createdAt: img.createdAt.toISOString(),
         })),
+        postSlug: post.slug,
       },
       { status: 200 }
     );

@@ -1,11 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
-import EquationReferenceSelector from './EquationReferenceSelector';
-import ImageReferenceSelector from './ImageReferenceSelector';
-import DefinitionReferenceSelector from './DefinitionReferenceSelector';
-import TheoremReferenceSelector from './TheoremReferenceSelector';
+import ReferenceSelectorModal from './ReferenceSelectorModal';
 import ImageUploader from './ImageUploader';
 
 interface MarkdownEditorProps {
@@ -28,31 +25,11 @@ export default function MarkdownEditor({
   const [equationCounter, setEquationCounter] = useState(1);
   const [definitionCounter, setDefinitionCounter] = useState(1);
   const [theoremCounter, setTheoremCounter] = useState(1);
-  const [showReferenceSelector, setShowReferenceSelector] = useState(false);
-  const [showImageReferenceSelector, setShowImageReferenceSelector] = useState(false);
-  const [showDefinitionReferenceSelector, setShowDefinitionReferenceSelector] = useState(false);
-  const [showTheoremReferenceSelector, setShowTheoremReferenceSelector] = useState(false);
+  const [showReferenceModal, setShowReferenceModal] = useState(false);
   const [showImageUploader, setShowImageUploader] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
   const [showImageExamples, setShowImageExamples] = useState(false);
-  const [showDefinitionsDropdown, setShowDefinitionsDropdown] = useState(false);
-  const [showTheoremsDropdown, setShowTheoremsDropdown] = useState(false);
 
-  // Cerrar desplegables al hacer click fuera
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.relative')) {
-        setShowDefinitionsDropdown(false);
-        setShowTheoremsDropdown(false);
-      }
-    };
-
-    if (showDefinitionsDropdown || showTheoremsDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showDefinitionsDropdown, showTheoremsDropdown]);
 
   // Función para insertar texto en la posición del cursor
   const insertText = (textToInsert: string) => {
@@ -416,29 +393,35 @@ export default function MarkdownEditor({
 
   // Insertar referencia a imagen
   const handleInsertImageReference = (anchorId: string, postSlug: string) => {
-    let referenceText: string;
-    if (currentPostSlug === postSlug || !currentPostSlug) {
-      // Referencia al mismo post: {{img:anchor-id|texto}}
-      referenceText = `{{img:${anchorId}|texto del enlace}}`;
-    } else {
-      // Referencia a otro post: {{img:post-slug/anchor-id|texto}}
-      referenceText = `{{img:${postSlug}/${anchorId}|texto del enlace}}`;
-    }
-
-    insertText(referenceText);
-
-    // Seleccionar "texto del enlace" para fácil edición
-    setTimeout(() => {
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const currentPos = textarea.selectionStart;
-        const startPos = currentPos - referenceText.length;
-        // Posición después de |
-        const pipePos = referenceText.indexOf('|') + 1;
-        const endPos = startPos + referenceText.length - 2; // Antes de }}
-        textarea.setSelectionRange(startPos + pipePos, endPos);
+    console.log('[MarkdownEditor] handleInsertImageReference llamado:', { anchorId, postSlug, currentPostSlug });
+    try {
+      let referenceText: string;
+      if (currentPostSlug === postSlug || !currentPostSlug) {
+        // Referencia al mismo post: {{img:anchor-id|texto}}
+        referenceText = `{{img:${anchorId}|texto del enlace}}`;
+      } else {
+        // Referencia a otro post: {{img:post-slug/anchor-id|texto}}
+        referenceText = `{{img:${postSlug}/${anchorId}|texto del enlace}}`;
       }
-    }, 10);
+
+      console.log('[MarkdownEditor] Insertando referencia de imagen:', referenceText);
+      insertText(referenceText);
+
+      // Seleccionar "texto del enlace" para fácil edición
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          const currentPos = textarea.selectionStart;
+          const startPos = currentPos - referenceText.length;
+          // Posición después de |
+          const pipePos = referenceText.indexOf('|') + 1;
+          const endPos = startPos + referenceText.length - 2; // Antes de }}
+          textarea.setSelectionRange(startPos + pipePos, endPos);
+        }
+      }, 10);
+    } catch (err) {
+      console.error('[MarkdownEditor] Error al insertar referencia de imagen:', err);
+    }
   };
 
   // Insertar referencia a ecuación
@@ -529,249 +512,108 @@ export default function MarkdownEditor({
         {/* Básicas */}
         <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
           <span className="text-xs text-text-muted self-center mr-2 font-semibold">Básicas:</span>
-          <button
-            type="button"
-            onClick={insertInlineFormula}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar fórmula inline ($...$)"
+          <select
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === 'inline') insertInlineFormula();
+              else if (value === 'block') insertBlockFormula();
+              else if (value === 'numbered') insertNumberedFormula();
+              else if (value === 'named') insertNamedEquation();
+              else if (value === 'definition') insertNumberedDefinition();
+              else if (value === 'theorem') insertNumberedTheorem();
+              // Resetear el select
+              e.target.value = '';
+            }}
+            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+            style={{ 
+              borderColor: 'var(--border-glow)',
+              backgroundColor: 'rgb(26, 26, 46)', // Fondo oscuro opaco 100%
+              color: 'var(--text-secondary)'
+            }}
+            defaultValue=""
           >
-            Fórmula Inline
-          </button>
-          <button
-            type="button"
-            onClick={insertBlockFormula}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar fórmula en bloque ($$...$$)"
-          >
-            Fórmula Bloque
-          </button>
-          <button
-            type="button"
-            onClick={insertNumberedFormula}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-nebula-purple/20 border border-nebula-purple/50 transition-colors hover:bg-nebula-purple/30 text-nebula-purple hover:text-nebula-purple"
-            title="Insertar fórmula numerada"
-          >
-            Numerada ({equationCounter})
-          </button>
-          <button
-            type="button"
-            onClick={insertNamedEquation}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-nebula-purple/20 border border-nebula-purple/50 transition-colors hover:bg-nebula-purple/30 text-nebula-purple hover:text-nebula-purple"
-            title="Insertar ecuación con nombre/etiqueta"
-          >
-            Con Nombre ({equationCounter})
-          </button>
+            <option value="" disabled>Seleccionar opción...</option>
+            <option value="inline">Fórmula Inline ($...$)</option>
+            <option value="block">Fórmula Bloque ($$...$$)</option>
+            <option value="numbered">Fórmula Numerada ({equationCounter})</option>
+            <option value="named">Ecuación con Nombre ({equationCounter})</option>
+            <option value="definition">Definición Numerada ({definitionCounter})</option>
+            <option value="theorem">Teorema Numerado ({theoremCounter})</option>
+          </select>
           
-          {/* Desplegable de Definiciones y Teoremas */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowDefinitionsDropdown(!showDefinitionsDropdown)}
-              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              style={{ borderColor: 'var(--border-glow)' }}
-              title="Definiciones y Teoremas"
-            >
-              Def/Teo ▼
-            </button>
-            {showDefinitionsDropdown && (
-              <div className="absolute top-full left-0 mt-1 z-10 rounded-lg border overflow-hidden" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'var(--space-primary)' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    insertNumberedDefinition();
-                    setShowDefinitionsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-text-secondary"
-                >
-                  Definición Numerada ({definitionCounter})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    insertNumberedTheorem();
-                    setShowDefinitionsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-text-secondary"
-                >
-                  Teorema Numerado ({theoremCounter})
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Avanzadas */}
-        <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-          <span className="text-xs text-text-muted self-center mr-2 font-semibold">Avanzadas:</span>
-          <button
-            type="button"
-            onClick={insertIntegral}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar integral con límites"
+          <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Avanzadas:</span>
+          <select
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === 'integral') insertIntegral();
+              else if (value === 'summation') insertSummation();
+              else if (value === 'matrix') insertMatrix();
+              else if (value === 'complex-fraction') insertComplexFraction();
+              else if (value === 'aligned') insertAlignedEquations();
+              else if (value === 'cases') insertCaseFunction();
+              // Resetear el select
+              e.target.value = '';
+            }}
+            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+            style={{ 
+              borderColor: 'var(--border-glow)',
+              backgroundColor: 'rgb(26, 26, 46)', // Fondo oscuro opaco 100%
+              color: 'var(--text-secondary)'
+            }}
+            defaultValue=""
           >
-            Integral
-          </button>
-          <button
-            type="button"
-            onClick={insertSummation}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar sumatoria con límites"
-          >
-            Sumatoria
-          </button>
-          <button
-            type="button"
-            onClick={insertMatrix}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar matriz"
-          >
-            Matriz
-          </button>
-          <button
-            type="button"
-            onClick={insertComplexFraction}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar fracción compleja"
-          >
-            Fracción Compleja
-          </button>
-          <button
-            type="button"
-            onClick={insertAlignedEquations}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar ecuaciones alineadas (múltiples ecuaciones)"
-          >
-            Ecuaciones Alineadas
-          </button>
-          <button
-            type="button"
-            onClick={insertCaseFunction}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar función por casos (piecewise)"
-          >
-            Función por Casos
-          </button>
-        </div>
-
-        {/* Anclas */}
-        <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-          <span className="text-xs text-text-muted self-center mr-2 font-semibold">Anclas:</span>
-          <button
-            type="button"
-            onClick={insertAnchoredEquation}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar ecuación con ancla (para referencias)"
-          >
-            Ecuación con Ancla
-          </button>
-          <button
-            type="button"
-            onClick={insertAnchoredEquationWithDescription}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-nebula-purple/20 border border-nebula-purple/50 transition-colors hover:bg-nebula-purple/30 text-nebula-purple hover:text-nebula-purple"
-            title="Insertar ecuación con ancla y descripción (para IA)"
-          >
-            Ecuación con Ancla + Descripción
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowReferenceSelector(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar referencia a ecuación existente (de este u otros posts)"
-          >
-            Insertar Referencia
-          </button>
+            <option value="" disabled>Seleccionar opción...</option>
+            <option value="integral">Integral</option>
+            <option value="summation">Sumatoria</option>
+            <option value="matrix">Matriz</option>
+            <option value="complex-fraction">Fracción Compleja</option>
+            <option value="aligned">Ecuaciones Alineadas</option>
+            <option value="cases">Función por Casos</option>
+          </select>
           
-          {/* Desplegable de Definiciones y Teoremas con Anclas */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowTheoremsDropdown(!showTheoremsDropdown)}
-              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              style={{ borderColor: 'var(--border-glow)' }}
-              title="Definiciones y Teoremas con Anclas"
-            >
-              Def/Teo Anclas ▼
-            </button>
-            {showTheoremsDropdown && (
-              <div className="absolute top-full left-0 mt-1 z-10 rounded-lg border overflow-hidden min-w-[200px]" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'var(--space-primary)' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    insertAnchoredDefinition();
-                    setShowTheoremsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-text-secondary border-b"
-                  style={{ borderColor: 'var(--border-glow)' }}
-                >
-                  Definición con Ancla
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    insertAnchoredDefinitionWithDescription();
-                    setShowTheoremsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-star-cyan border-b"
-                  style={{ borderColor: 'var(--border-glow)' }}
-                >
-                  Definición + Descripción
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    insertAnchoredTheorem();
-                    setShowTheoremsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-text-secondary border-b"
-                  style={{ borderColor: 'var(--border-glow)' }}
-                >
-                  Teorema con Ancla
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    insertAnchoredTheoremWithDescription();
-                    setShowTheoremsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-star-cyan border-b"
-                  style={{ borderColor: 'var(--border-glow)' }}
-                >
-                  Teorema + Descripción
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDefinitionReferenceSelector(true);
-                    setShowTheoremsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-text-secondary border-b"
-                  style={{ borderColor: 'var(--border-glow)' }}
-                >
-                  Referencia a Definición
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowTheoremReferenceSelector(true);
-                    setShowTheoremsDropdown(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-xs hover:bg-space-secondary text-text-secondary"
-                >
-                  Referencia a Teorema
-                </button>
-              </div>
-            )}
-          </div>
+          <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Anclas:</span>
+          <select
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === 'eq-anchor') insertAnchoredEquation();
+              else if (value === 'eq-anchor-desc') insertAnchoredEquationWithDescription();
+              else if (value === 'def-anchor') insertAnchoredDefinition();
+              else if (value === 'def-anchor-desc') insertAnchoredDefinitionWithDescription();
+              else if (value === 'thm-anchor') insertAnchoredTheorem();
+              else if (value === 'thm-anchor-desc') insertAnchoredTheoremWithDescription();
+              // Resetear el select
+              e.target.value = '';
+            }}
+            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+            style={{ 
+              borderColor: 'var(--border-glow)',
+              backgroundColor: 'rgb(26, 26, 46)', // Fondo oscuro opaco 100%
+              color: 'var(--text-secondary)'
+            }}
+            defaultValue=""
+          >
+            <option value="" disabled>Seleccionar opción...</option>
+            <option value="eq-anchor">Ecuación con Ancla</option>
+            <option value="eq-anchor-desc">Ecuación + Descripción</option>
+            <option value="def-anchor">Definición con Ancla</option>
+            <option value="def-anchor-desc">Definición + Descripción</option>
+            <option value="thm-anchor">Teorema con Ancla</option>
+            <option value="thm-anchor-desc">Teorema + Descripción</option>
+          </select>
+          
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowReferenceModal(true);
+            }}
+            className="px-4 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan ml-4"
+            style={{ borderColor: 'var(--border-glow)' }}
+            title="Insertar referencia a ecuación, imagen, definición o teorema"
+          >
+            🔗 Referencias
+          </button>
         </div>
 
         {/* Imágenes */}
@@ -819,43 +661,16 @@ export default function MarkdownEditor({
         </div>
       </div>
 
-      {/* Modal de selección de referencias de ecuaciones */}
-      {showReferenceSelector && (
-        <EquationReferenceSelector
+      {/* Modal unificado de referencias */}
+      {showReferenceModal && (
+        <ReferenceSelectorModal
           postId={postId}
           currentPostSlug={currentPostSlug}
-          onSelect={handleInsertReference}
-          onClose={() => setShowReferenceSelector(false)}
-        />
-      )}
-
-      {/* Modal de selección de referencias de imágenes */}
-      {showImageReferenceSelector && postId && (
-        <ImageReferenceSelector
-          postId={postId}
-          currentPostSlug={currentPostSlug}
-          onSelect={handleInsertImageReference}
-          onClose={() => setShowImageReferenceSelector(false)}
-        />
-      )}
-
-      {/* Modal de selección de referencias de definiciones */}
-      {showDefinitionReferenceSelector && (
-        <DefinitionReferenceSelector
-          postId={postId}
-          currentPostSlug={currentPostSlug}
-          onSelect={handleInsertDefinitionReference}
-          onClose={() => setShowDefinitionReferenceSelector(false)}
-        />
-      )}
-
-      {/* Modal de selección de referencias de teoremas */}
-      {showTheoremReferenceSelector && (
-        <TheoremReferenceSelector
-          postId={postId}
-          currentPostSlug={currentPostSlug}
-          onSelect={handleInsertTheoremReference}
-          onClose={() => setShowTheoremReferenceSelector(false)}
+          onSelectEquation={handleInsertReference}
+          onSelectImage={handleInsertImageReference}
+          onSelectDefinition={handleInsertDefinitionReference}
+          onSelectTheorem={handleInsertTheoremReference}
+          onClose={() => setShowReferenceModal(false)}
         />
       )}
 

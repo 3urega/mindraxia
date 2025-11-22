@@ -6,6 +6,7 @@ import Link from 'next/link';
 interface EquationAnchorProps {
   anchorId: string;
   description?: string;
+  number: number; // Número de la ecuación (siempre presente)
   children: React.ReactNode;
   postSlug: string;
 }
@@ -13,6 +14,7 @@ interface EquationAnchorProps {
 export default function EquationAnchor({
   anchorId,
   description,
+  number,
   children,
   postSlug,
 }: EquationAnchorProps) {
@@ -34,21 +36,37 @@ export default function EquationAnchor({
   return (
     <div
       id={htmlId}
-      className="group relative my-6"
+      className="group relative my-6 rounded-lg border-2 p-4"
+      style={{
+        borderColor: 'rgba(124, 58, 237, 0.5)', // purple/nebulosa
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+      }}
     >
-      {/* Contenido de la ecuación */}
-      {children}
-
-      {/* Botón copiar enlace (aparece al hacer hover) */}
-      <div className="absolute right-0 top-0 opacity-0 transition-opacity group-hover:opacity-100">
+      {/* Título de la ecuación */}
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-lg font-semibold text-nebula-purple">
+          Ecuación {number}
+        </h4>
         <button
           onClick={copyLink}
-          className="rounded border px-2 py-1 text-xs transition-colors hover:bg-space-secondary hover:text-star-cyan bg-space-primary"
+          className="opacity-0 group-hover:opacity-100 transition-opacity rounded border px-2 py-1 text-xs transition-colors hover:bg-space-secondary hover:text-star-cyan bg-space-primary"
           style={{ borderColor: 'var(--border-glow)' }}
           title="Copiar enlace a esta ecuación"
         >
           {copied ? '✓ Copiado' : '🔗'}
         </button>
+      </div>
+
+      {/* Descripción (si existe) */}
+      {description && (
+        <p className="text-sm text-text-muted mb-3 italic">
+          {description}
+        </p>
+      )}
+
+      {/* Contenido de la ecuación */}
+      <div className="text-text-secondary">
+        {children}
       </div>
     </div>
   );

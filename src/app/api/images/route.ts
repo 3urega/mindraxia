@@ -3,8 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/get-session';
 
 /**
- * GET /api/theorems
- * Obtiene todos los teoremas de todos los posts publicados
+ * GET /api/images
+ * Obtiene todas las imágenes con anclas de todos los posts publicados
  * Útil para referencias cruzadas entre posts
  */
 export async function GET(request: NextRequest) {
@@ -26,10 +26,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const postSlug = searchParams.get('postSlug'); // Filtrar por post específico
 
-    // Construir query para teoremas
+    // Construir query para imágenes
     const whereClause: any = {
       post: {
         published: true, // Solo posts publicados
+      },
+      anchorId: {
+        not: null, // Solo imágenes con anclas
       },
     };
 
@@ -38,8 +41,8 @@ export async function GET(request: NextRequest) {
       whereClause.post.slug = postSlug;
     }
 
-    // Obtener teoremas con información del post
-    const theorems = await prisma.theorem.findMany({
+    // Obtener imágenes con información del post
+    const images = await prisma.image.findMany({
       where: whereClause,
       include: {
         post: {
@@ -53,59 +56,56 @@ export async function GET(request: NextRequest) {
       orderBy: [
         {
           post: {
-            createdAt: 'desc', // Usar createdAt en lugar de publishedAt que puede ser null
+            publishedAt: 'desc',
           },
         },
         {
-          number: 'asc',
+          createdAt: 'desc',
         },
       ],
     });
 
     // Filtrar por búsqueda si se proporciona
-    let filteredTheorems = theorems;
+    let filteredImages = images;
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredTheorems = theorems.filter(
-        (thm) =>
-          thm.anchorId.toLowerCase().includes(searchLower) ||
-          thm.description?.toLowerCase().includes(searchLower) ||
-          thm.content.toLowerCase().includes(searchLower) ||
-          thm.post.title.toLowerCase().includes(searchLower) ||
-          thm.post.slug.toLowerCase().includes(searchLower)
+      filteredImages = images.filter(
+        (img) =>
+          img.anchorId?.toLowerCase().includes(searchLower) ||
+          img.description?.toLowerCase().includes(searchLower) ||
+          img.originalName.toLowerCase().includes(searchLower) ||
+          img.alt?.toLowerCase().includes(searchLower) ||
+          img.post.title.toLowerCase().includes(searchLower) ||
+          img.post.slug.toLowerCase().includes(searchLower)
       );
     }
 
     // Serializar resultados
-    const result = filteredTheorems.map((thm) => ({
-      anchorId: thm.anchorId,
-      description: thm.description,
-      content: thm.content,
-      number: thm.number,
-      postSlug: thm.post.slug,
-      postTitle: thm.post.title,
-      postId: thm.post.id,
+    const result = filteredImages.map((img) => ({
+      id: img.id,
+      anchorId: img.anchorId,
+      description: img.description,
+      originalName: img.originalName,
+      url: img.url,
+      alt: img.alt,
+      postSlug: img.post.slug,
+      postTitle: img.post.title,
+      postId: img.post.id,
     }));
 
     return NextResponse.json(
       {
-        theorems: result,
+        images: result,
         count: result.length,
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error('Error fetching theorems:', error);
-    console.error('Error details:', {
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name,
-    });
+  } catch (error) {
+    console.error('Error fetching images:', error);
     return NextResponse.json(
       {
         error: 'Internal Server Error',
-        message: error?.message || 'Failed to fetch theorems',
-        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+        message: 'Failed to fetch images',
       },
       { status: 500 }
     );

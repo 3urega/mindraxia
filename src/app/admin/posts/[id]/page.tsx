@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import { generateSlug } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface Post {
   id: string;
@@ -19,6 +20,38 @@ export default function EditPostPage() {
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
+  
+  // Log cuando cambian los params
+  useEffect(() => {
+    console.log('[EditPostPage] Params cambiados:', { postId, params });
+  }, [postId, params]);
+  
+  // Interceptar navegaciones del router SOLO para debugging
+  useEffect(() => {
+    const originalPush = router.push;
+    const originalReplace = router.replace;
+    
+    router.push = function(...args: any[]) {
+      const stack = new Error().stack;
+      console.error('[EditPostPage] ⚠️⚠️⚠️ router.push llamado:', args);
+      console.error('[EditPostPage] Stack trace completo:', stack);
+      // NO prevenir la navegación, solo loguear
+      return originalPush.apply(router, args);
+    };
+    
+    router.replace = function(...args: any[]) {
+      const stack = new Error().stack;
+      console.error('[EditPostPage] ⚠️⚠️⚠️ router.replace llamado:', args);
+      console.error('[EditPostPage] Stack trace completo:', stack);
+      // NO prevenir la navegación, solo loguear
+      return originalReplace.apply(router, args);
+    };
+    
+    return () => {
+      router.push = originalPush;
+      router.replace = originalReplace;
+    };
+  }, [router]);
 
   const [post, setPost] = useState<Post | null>(null);
   const [title, setTitle] = useState('');
@@ -32,21 +65,67 @@ export default function EditPostPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log('[EditPostPage] useEffect postId cambiado:', { postId, hasPost: !!post });
     if (postId) {
       fetchPost();
     }
   }, [postId]);
+  
+  // Log cuando el componente se monta/desmonta
+  useEffect(() => {
+    console.log('[EditPostPage] ✅ Componente montado');
+    return () => {
+      console.error('[EditPostPage] ⚠️ Componente desmontado - ESTO NO DEBERÍA PASAR AL ABRIR MODAL');
+      console.error('[EditPostPage] Stack trace del desmontaje:', new Error().stack);
+    };
+  }, []);
+  
+  // Log cuando cambian los estados críticos
+  useEffect(() => {
+    console.log('[EditPostPage] Estado cambiado:', { 
+      hasPost: !!post, 
+      error, 
+      loading, 
+      postId,
+      postTitle: post?.title 
+    });
+    
+    // Si hay error y no hay post, esto podría causar desmontaje
+    if (error && !post && !loading) {
+      console.error('[EditPostPage] ⚠️ CONDICIÓN PELIGROSA: error=true, post=null, loading=false');
+      console.error('[EditPostPage] Esto podría causar que se muestre el componente de error que tiene botón de redirección');
+    }
+  }, [post, error, loading, postId]);
+  
+  // Prevenir que el componente se desmonte si hay un error pero el post existe
+  useEffect(() => {
+    if (error && post) {
+      console.log('[EditPostPage] Hay error pero también hay post, limpiando error para evitar desmontaje');
+      // No limpiar automáticamente, solo loguear
+    }
+  }, [error, post]);
 
   const fetchPost = async () => {
     try {
+      console.log('[EditPostPage] fetchPost iniciado para postId:', postId);
       setLoading(true);
+      setError(''); // Limpiar error previo
       const response = await fetch(`/api/posts/${postId}`);
 
       if (!response.ok) {
-        throw new Error('Error al cargar el post');
+        console.error('[EditPostPage] Error en respuesta:', response.status, response.statusText);
+        // Si hay un post cargado previamente, mantenerlo y solo mostrar error
+        if (post) {
+          console.log('[EditPostPage] Hay post previo, manteniéndolo aunque haya error en fetch');
+          setError('Error al actualizar el post, pero puedes seguir editando');
+        } else {
+          throw new Error('Error al cargar el post');
+        }
+        return;
       }
 
       const data: Post = await response.json();
+      console.log('[EditPostPage] Post cargado exitosamente:', data.id);
       setPost(data);
       setTitle(data.title);
       setSlug(data.slug);
@@ -54,9 +133,17 @@ export default function EditPostPage() {
       setContent(data.content);
       setPublished(data.published);
       setTags(data.tags.map((tag) => tag.name).join(', '));
+      setError(''); // Asegurar que no hay error
     } catch (error) {
-      console.error('Error fetching post:', error);
-      setError('Error al cargar el post');
+      console.error('[EditPostPage] Error fetching post:', error);
+      // Solo establecer error si NO hay post cargado
+      if (!post) {
+        console.error('[EditPostPage] No hay post previo, estableciendo error');
+        setError('Error al cargar el post');
+      } else {
+        console.log('[EditPostPage] Hay post previo, NO estableciendo error para evitar desmontaje');
+        // No establecer error para evitar que entre en el estado if (error && !post)
+      }
     } finally {
       setLoading(false);
     }
@@ -72,6 +159,20 @@ export default function EditPostPage() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('[EditPostPage] handleSubmit llamado - ESTO NO DEBERÍA PASAR AL ABRIR MODAL');
+    console.log('[EditPostPage] Event:', e);
+    console.log('[EditPostPage] Target:', e.target);
+    console.log('[EditPostPage] CurrentTarget:', e.currentTarget);
+    
+    // Si el modal está abierto, NO procesar el submit
+    // Esto es un workaround temporal hasta encontrar la causa raíz
+    const modalOpen = document.querySelector('[class*="fixed inset-0 z-50"]');
+    if (modalOpen) {
+      console.error('[EditPostPage] ⚠️ Formulario se intentó enviar con modal abierto - PREVENIENDO');
+      return;
+    }
+    
     setError('');
     setSaving(true);
 
@@ -160,6 +261,7 @@ export default function EditPostPage() {
   };
 
   if (loading) {
+    console.log('[EditPostPage] Renderizando estado de carga');
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-text-secondary">Cargando post...</p>
@@ -167,13 +269,21 @@ export default function EditPostPage() {
     );
   }
 
-  if (error && !post) {
+  if (error && !post && !loading) {
+    console.error('[EditPostPage] ⚠️ Renderizando error sin post - ESTO CAUSA REDIRECCIÓN:', { error, post, postId, loading });
+    console.error('[EditPostPage] Stack trace:', new Error().stack);
+    // Agregar un pequeño delay para ver si algo cambia antes de mostrar el error
     return (
       <div className="rounded-lg border p-4" style={{ borderColor: 'rgba(239, 68, 68, 0.5)', backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
-        <p className="text-red-400">{error}</p>
+        <p className="text-red-400 font-semibold mb-2">Error al cargar el post</p>
+        <p className="text-red-300 text-sm mb-4">{error}</p>
+        <p className="text-text-muted text-xs mb-4">Post ID: {postId}</p>
         <button
-          onClick={() => router.push('/admin/posts')}
-          className="mt-4 px-4 py-2 rounded-lg border text-text-primary"
+          onClick={() => {
+            console.log('[EditPostPage] Botón "Volver a Posts" clickeado manualmente');
+            router.push('/admin/posts');
+          }}
+          className="mt-4 px-4 py-2 rounded-lg border text-text-primary hover:bg-space-secondary transition-colors"
           style={{ borderColor: 'var(--border-glow)' }}
         >
           Volver a Posts
@@ -181,8 +291,42 @@ export default function EditPostPage() {
       </div>
     );
   }
+  
+  console.log('[EditPostPage] Renderizando formulario:', { postId, hasPost: !!post, error, loading });
 
+  console.log('[EditPostPage] Renderizando componente principal');
+  
   return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('[EditPostPage] ⚠️ ERROR CAPTURADO POR ERRORBOUNDARY:', {
+          error: {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          },
+          errorInfo: {
+            componentStack: errorInfo.componentStack,
+          },
+        });
+        // NO establecer error aquí para evitar que cause desmontaje
+      }}
+      fallback={
+        <div className="space-y-6">
+          <div className="rounded-lg border p-4" style={{ borderColor: 'rgba(239, 68, 68, 0.5)', backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
+            <p className="text-red-400 font-semibold mb-2">Error en el editor de posts</p>
+            <p className="text-red-300 text-sm mb-4">Revisa la consola para más detalles</p>
+            <button
+              onClick={() => router.push('/admin/posts')}
+              className="px-4 py-2 rounded-lg border text-text-primary"
+              style={{ borderColor: 'var(--border-glow)' }}
+            >
+              Volver a Posts
+            </button>
+          </div>
+        </div>
+      }
+    >
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -361,6 +505,7 @@ export default function EditPostPage() {
         </div>
       </form>
     </div>
+    </ErrorBoundary>
   );
 }
 
