@@ -1,4 +1,7 @@
+'use client';
+
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
   return (
@@ -38,6 +41,9 @@ export default function Header() {
             <Link href="/contact" className="text-text-secondary transition-colors hover:text-star-cyan">
               Contacto
             </Link>
+          </li>
+          <li>
+            <ThemeToggle />
           </li>
         </ul>
       </nav>

@@ -2,35 +2,72 @@
 
 @layer theme {
   @theme {
-    /* Colores de fondo (Espacio Profundo) */
+    /* Tema Dark (por defecto) */
     --color-space-dark: #0a0a0f;
     --color-space-primary: #1a1a2e;
     --color-space-secondary: #16213e;
     
-    /* Colores de acento (Estrellas y Nebulosas) */
+    /* Colores de acento (Estrellas y Nebulosas) - Dark Theme */
     --color-star-cyan: #64ffda;
     --color-nebula-purple: #7c3aed;
     --color-star-gold: #fbbf24;
     
-    /* Colores de texto */
+    /* Colores de texto - Dark Theme */
     --color-text-primary: #f8fafc;
     --color-text-secondary: #cbd5e1;
     --color-text-muted: #94a3b8;
   }
 }
 
-:root {
-  /* Variables CSS adicionales para efectos personalizados */
+/* Tema Dark */
+[data-theme="dark"],
+:root:not([data-theme]) {
+  --color-space-dark: #0a0a0f;
+  --color-space-primary: #1a1a2e;
+  --color-space-secondary: #16213e;
+  
+  --color-star-cyan: #64ffda;
+  --color-nebula-purple: #7c3aed;
+  --color-star-gold: #fbbf24;
+  
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  
   --border-glow: rgba(100, 255, 218, 0.2);
   --glow-cyan: 0 0 20px rgba(100, 255, 218, 0.3);
   --glow-purple: 0 0 20px rgba(124, 58, 237, 0.3);
 }
 
+/* Tema Light */
+[data-theme="light"] {
+  /* Fondos: blancos puros o con tintes muy sutiles (evitar grises puros) */
+  --color-space-dark: #ffffff;
+  --color-space-primary: #f8fafc;
+  --color-space-secondary: #f1f5f9;
+  
+  /* Colores de acento: más vibrantes con buen contraste */
+  --color-star-cyan: #06b6d4;
+  --color-nebula-purple: #6366f1;
+  --color-star-gold: #f59e0b;
+  
+  /* Texto: contraste óptimo para legibilidad */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  
+  /* Bordes y efectos: más sutiles en light theme */
+  --border-glow: rgba(6, 182, 212, 0.15);
+  --glow-cyan: 0 0 15px rgba(6, 182, 212, 0.15);
+  --glow-purple: 0 0 15px rgba(99, 102, 241, 0.15);
+}
+
 body {
-  background: #0a0a0f;
-  color: #f8fafc;
+  background: var(--color-space-dark);
+  color: var(--color-text-primary);
   font-family: var(--font-geist-sans), sans-serif;
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Efectos de glow para elementos interactivos */
@@ -40,7 +77,16 @@ body {
 }
 
 .glow-cyan:hover {
+  box-shadow: var(--glow-cyan);
+}
+
+[data-theme="dark"] .glow-cyan:hover,
+:root:not([data-theme]) .glow-cyan:hover {
   box-shadow: 0 0 30px rgba(100, 255, 218, 0.5);
+}
+
+[data-theme="light"] .glow-cyan:hover {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.3);
 }
 
 /* Bordes translúcidos */
@@ -102,13 +148,13 @@ body {
 
 /* Estilos para código inline y bloques de código */
 .prose code {
-  background-color: rgba(26, 26, 46, 0.8);
+  background-color: var(--color-space-primary);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
 }
 
 .prose pre {
-  background-color: rgba(26, 26, 46, 0.8);
+  background-color: var(--color-space-primary);
   border: 1px solid var(--border-glow);
   border-radius: 0.5rem;
   padding: 1rem;
@@ -122,34 +168,72 @@ body {
 
 /* Estilos para ecuaciones con anclas - efecto de resaltado */
 .equation-highlight {
-  animation: highlightPulse 3s ease-in-out;
-  border-color: var(--star-cyan) !important;
-  box-shadow: 0 0 20px rgba(100, 255, 218, 0.4);
+  border-color: var(--color-star-cyan) !important;
 }
 
 @keyframes highlightPulse {
   0% {
-    box-shadow: 0 0 20px rgba(100, 255, 218, 0.6);
-    border-color: var(--star-cyan);
+    box-shadow: var(--glow-cyan);
+    border-color: var(--color-star-cyan);
   }
   50% {
-    box-shadow: 0 0 30px rgba(100, 255, 218, 0.8);
-    border-color: var(--star-cyan);
+    box-shadow: var(--glow-cyan);
+    border-color: var(--color-star-cyan);
   }
   100% {
-    box-shadow: 0 0 20px rgba(100, 255, 218, 0.2);
+    box-shadow: var(--glow-cyan);
     border-color: var(--border-glow);
   }
 }
 
-/* Estilos para select con fondo oscuro opaco */
+[data-theme="dark"] .equation-highlight,
+:root:not([data-theme]) .equation-highlight {
+  animation: highlightPulseDark 3s ease-in-out;
+}
+
+[data-theme="light"] .equation-highlight {
+  animation: highlightPulseLight 3s ease-in-out;
+}
+
+@keyframes highlightPulseDark {
+  0% {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.6);
+    border-color: #64ffda;
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(100, 255, 218, 0.8);
+    border-color: #64ffda;
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.2);
+    border-color: rgba(100, 255, 218, 0.2);
+  }
+}
+
+@keyframes highlightPulseLight {
+  0% {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    border-color: #06b6d4;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+    border-color: #06b6d4;
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+    border-color: rgba(6, 182, 212, 0.15);
+  }
+}
+
+/* Estilos para select con fondo opaco */
 select {
-  background-color: rgb(26, 26, 46) !important;
+  background-color: var(--color-space-primary) !important;
   color: var(--color-text-secondary) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 select option {
-  background-color: rgb(26, 26, 46) !important;
+  background-color: var(--color-space-primary) !important;
   color: var(--color-text-secondary) !important;
 }
 
