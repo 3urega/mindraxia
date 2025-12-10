@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
 import ReferenceSelectorModal from './ReferenceSelectorModal';
 import ImageUploader from './ImageUploader';
@@ -29,6 +29,10 @@ export default function MarkdownEditor({
   const [showImageUploader, setShowImageUploader] = useState(false);
   const [showExamples, setShowExamples] = useState(false);
   const [showImageExamples, setShowImageExamples] = useState(false);
+  const [showFloatingToolbar, setShowFloatingToolbar] = useState(false);
+  const [showFloatingButton, setShowFloatingButton] = useState(false);
+  const [isPanelAnimating, setIsPanelAnimating] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
 
   // Función para insertar texto en la posición del cursor
@@ -48,6 +52,214 @@ export default function MarkdownEditor({
       const newPosition = start + textToInsert.length;
       textarea.setSelectionRange(newPosition, newPosition);
       textarea.focus();
+    }, 0);
+  };
+
+  // Función para aplicar formato al texto seleccionado
+  const applyFormat = (before: string, after: string = '', placeholder: string = 'texto') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    let newValue: string;
+    let newCursorPos: number;
+
+    if (selectedText) {
+      // Si hay texto seleccionado, envolverlo con el formato
+      newValue = value.substring(0, start) + before + selectedText + after + value.substring(end);
+      newCursorPos = start + before.length + selectedText.length + after.length;
+    } else {
+      // Si no hay selección, insertar plantilla
+      newValue = value.substring(0, start) + before + placeholder + after + value.substring(end);
+      newCursorPos = start + before.length + placeholder.length;
+    }
+
+    onChange(newValue);
+
+    setTimeout(() => {
+      if (textarea) {
+        if (selectedText) {
+          // Si había selección, colocar cursor al final del texto formateado
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        } else {
+          // Si no había selección, seleccionar el placeholder para fácil edición
+          const placeholderStart = start + before.length;
+          const placeholderEnd = placeholderStart + placeholder.length;
+          textarea.setSelectionRange(placeholderStart, placeholderEnd);
+        }
+        textarea.focus();
+      }
+    }, 0);
+  };
+
+  // Funciones de formato
+  const applyBold = () => applyFormat('**', '**', 'texto en negrita');
+  const applyItalic = () => applyFormat('*', '*', 'texto en cursiva');
+  const applyUnderline = () => applyFormat('<u>', '</u>', 'texto subrayado');
+  const applyStrikethrough = () => applyFormat('~~', '~~', 'texto tachado');
+  const applyCode = () => applyFormat('`', '`', 'código');
+  const applyCodeBlock = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    let newValue: string;
+    let newCursorPos: number;
+
+    if (selectedText) {
+      newValue = value.substring(0, start) + '```\n' + selectedText + '\n```' + value.substring(end);
+      newCursorPos = start + 4 + selectedText.length + 5;
+    } else {
+      newValue = value.substring(0, start) + '```\ncódigo\n```' + value.substring(end);
+      newCursorPos = start + 7;
+    }
+
+    onChange(newValue);
+
+    setTimeout(() => {
+      if (textarea) {
+        if (selectedText) {
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        } else {
+          const codeStart = start + 4;
+          const codeEnd = codeStart + 6;
+          textarea.setSelectionRange(codeStart, codeEnd);
+        }
+        textarea.focus();
+      }
+    }, 0);
+  };
+
+  const applyLink = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    let newValue: string;
+    let newCursorPos: number;
+
+    if (selectedText) {
+      newValue = value.substring(0, start) + `[${selectedText}](url)` + value.substring(end);
+      newCursorPos = start + selectedText.length + 3;
+    } else {
+      newValue = value.substring(0, start) + '[texto del enlace](url)' + value.substring(end);
+      newCursorPos = start + 18;
+    }
+
+    onChange(newValue);
+
+    setTimeout(() => {
+      if (textarea) {
+        if (selectedText) {
+          // Seleccionar "url" para fácil edición
+          const urlStart = start + selectedText.length + 3;
+          const urlEnd = urlStart + 3;
+          textarea.setSelectionRange(urlStart, urlEnd);
+        } else {
+          // Seleccionar "texto del enlace"
+          const textStart = start + 1;
+          const textEnd = textStart + 16;
+          textarea.setSelectionRange(textStart, textEnd);
+        }
+        textarea.focus();
+      }
+    }, 0);
+  };
+
+  const applyHeading = (level: number) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    const hashes = '#'.repeat(level);
+    
+    let newValue: string;
+    let newCursorPos: number;
+
+    // Si estamos al inicio de una línea o hay texto seleccionado
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const isStartOfLine = start === lineStart;
+
+    if (selectedText) {
+      newValue = value.substring(0, start) + `${hashes} ${selectedText}` + value.substring(end);
+      newCursorPos = start + hashes.length + 1 + selectedText.length;
+    } else if (isStartOfLine) {
+      newValue = value.substring(0, start) + `${hashes} ` + value.substring(end);
+      newCursorPos = start + hashes.length + 1;
+    } else {
+      // Insertar en nueva línea
+      newValue = value.substring(0, start) + `\n${hashes} ` + value.substring(end);
+      newCursorPos = start + hashes.length + 3;
+    }
+
+    onChange(newValue);
+
+    setTimeout(() => {
+      if (textarea) {
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+      }
+    }, 0);
+  };
+
+  const applyList = (ordered: boolean) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    let newValue: string;
+    let newCursorPos: number;
+
+    // Detectar si estamos al inicio de una línea
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const isStartOfLine = start === lineStart;
+
+    if (selectedText) {
+      // Si hay texto seleccionado, convertirlo en lista
+      const lines = selectedText.split('\n');
+      const listItems = lines.map((line, index) => {
+        if (ordered) {
+          return `${index + 1}. ${line}`;
+        } else {
+          return `- ${line}`;
+        }
+      }).join('\n');
+      
+      newValue = value.substring(0, start) + listItems + value.substring(end);
+      newCursorPos = start + listItems.length;
+    } else {
+      // Insertar item de lista
+      const prefix = ordered ? '1. ' : '- ';
+      if (isStartOfLine) {
+        newValue = value.substring(0, start) + prefix + value.substring(end);
+        newCursorPos = start + prefix.length;
+      } else {
+        newValue = value.substring(0, start) + `\n${prefix}` + value.substring(end);
+        newCursorPos = start + prefix.length + 1;
+      }
+    }
+
+    onChange(newValue);
+
+    setTimeout(() => {
+      if (textarea) {
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+      }
     }, 0);
   };
 
@@ -505,102 +717,201 @@ export default function MarkdownEditor({
     }, 10);
   };
 
-  return (
-    <div className="w-full">
-      {/* Botones de acción rápida */}
-      <div className="mb-4 space-y-3">
-        {/* Básicas */}
-        <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-          <span className="text-xs text-text-muted self-center mr-2 font-semibold">Básicas:</span>
-          <select
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === 'inline') insertInlineFormula();
-              else if (value === 'block') insertBlockFormula();
-              else if (value === 'numbered') insertNumberedFormula();
-              else if (value === 'named') insertNamedEquation();
-              else if (value === 'definition') insertNumberedDefinition();
-              else if (value === 'theorem') insertNumberedTheorem();
-              // Resetear el select
-              e.target.value = '';
-            }}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
-            style={{ 
-              borderColor: 'var(--border-glow)',
-              backgroundColor: 'rgb(26, 26, 46)', // Fondo oscuro opaco 100%
-              color: 'var(--text-secondary)'
-            }}
-            defaultValue=""
+  // Hook para detectar cuando la barra de herramientas sale de vista
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!toolbarRef.current) return;
+      
+      const rect = toolbarRef.current.getBoundingClientRect();
+      // La barra está fuera de vista si está completamente arriba del viewport
+      const isOutOfView = rect.bottom < 0;
+      
+      // Mostrar botón flotante si la barra está fuera de vista
+      setShowFloatingButton(isOutOfView);
+    };
+
+    // Verificar inicialmente después de un pequeño delay para asegurar que el DOM está listo
+    const timeoutId = setTimeout(handleScroll, 100);
+
+    // Escuchar eventos de scroll en toda la ventana y en contenedores
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+
+    // También escuchar scroll en el contenedor padre si existe
+    const container = toolbarRef.current?.closest('[data-scroll-container]') || document;
+    container.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+      container.removeEventListener('scroll', handleScroll, true);
+    };
+  }, []);
+
+  // Activar animación cuando se abre el panel
+  useEffect(() => {
+    if (showFloatingToolbar) {
+      // Pequeño delay para que el DOM se monte antes de animar
+      const timeoutId = setTimeout(() => setIsPanelAnimating(true), 10);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setIsPanelAnimating(false);
+    }
+  }, [showFloatingToolbar]);
+
+  // Cerrar panel con tecla Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showFloatingToolbar) {
+        setIsPanelAnimating(false);
+        setTimeout(() => setShowFloatingToolbar(false), 300);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showFloatingToolbar]);
+
+  // Función para renderizar la barra de herramientas (reutilizable)
+  const renderToolbar = useCallback(() => (
+    <div className="space-y-3">
+      {/* Básicas */}
+      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+        <span className="text-xs text-text-muted self-center mr-2 font-semibold">Básicas:</span>
+        <select
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === 'inline') insertInlineFormula();
+            else if (value === 'block') insertBlockFormula();
+            else if (value === 'numbered') insertNumberedFormula();
+            else if (value === 'named') insertNamedEquation();
+            else if (value === 'definition') insertNumberedDefinition();
+            else if (value === 'theorem') insertNumberedTheorem();
+            e.target.value = '';
+          }}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+          style={{ 
+            borderColor: 'var(--border-glow)',
+            backgroundColor: 'rgb(26, 26, 46)',
+            color: 'var(--text-secondary)'
+          }}
+          defaultValue=""
+        >
+          <option value="" disabled>Seleccionar opción...</option>
+          <option value="inline">Fórmula Inline ($...$)</option>
+          <option value="block">Fórmula Bloque ($$...$$)</option>
+          <option value="numbered">Fórmula Numerada ({equationCounter})</option>
+          <option value="named">Ecuación con Nombre ({equationCounter})</option>
+          <option value="definition">Definición Numerada ({definitionCounter})</option>
+          <option value="theorem">Teorema Numerado ({theoremCounter})</option>
+        </select>
+        
+        <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Avanzadas:</span>
+        <select
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === 'integral') insertIntegral();
+            else if (value === 'summation') insertSummation();
+            else if (value === 'matrix') insertMatrix();
+            else if (value === 'complex-fraction') insertComplexFraction();
+            else if (value === 'aligned') insertAlignedEquations();
+            else if (value === 'cases') insertCaseFunction();
+            e.target.value = '';
+          }}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+          style={{ 
+            borderColor: 'var(--border-glow)',
+            backgroundColor: 'rgb(26, 26, 46)',
+            color: 'var(--text-secondary)'
+          }}
+          defaultValue=""
+        >
+          <option value="" disabled>Seleccionar opción...</option>
+          <option value="integral">Integral</option>
+          <option value="summation">Sumatoria</option>
+          <option value="matrix">Matriz</option>
+          <option value="complex-fraction">Fracción Compleja</option>
+          <option value="aligned">Ecuaciones Alineadas</option>
+          <option value="cases">Función por Casos</option>
+        </select>
+        
+        <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Anclas:</span>
+        <select
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === 'eq-anchor') insertAnchoredEquation();
+            else if (value === 'eq-anchor-desc') insertAnchoredEquationWithDescription();
+            else if (value === 'def-anchor') insertAnchoredDefinition();
+            else if (value === 'def-anchor-desc') insertAnchoredDefinitionWithDescription();
+            else if (value === 'thm-anchor') insertAnchoredTheorem();
+            else if (value === 'thm-anchor-desc') insertAnchoredTheoremWithDescription();
+            e.target.value = '';
+          }}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+          style={{ 
+            borderColor: 'var(--border-glow)',
+            backgroundColor: 'rgb(26, 26, 46)',
+            color: 'var(--text-secondary)'
+          }}
+          defaultValue=""
+        >
+          <option value="" disabled>Seleccionar opción...</option>
+          <option value="eq-anchor">Ecuación con Ancla</option>
+          <option value="eq-anchor-desc">Ecuación + Descripción</option>
+          <option value="def-anchor">Definición con Ancla</option>
+          <option value="def-anchor-desc">Definición + Descripción</option>
+          <option value="thm-anchor">Teorema con Ancla</option>
+          <option value="thm-anchor-desc">Teorema + Descripción</option>
+        </select>
+        
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowReferenceModal(true);
+          }}
+          className="px-4 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan ml-4"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar referencia a ecuación, imagen, definición o teorema"
+        >
+          🔗 Referencias
+        </button>
+      </div>
+
+      {/* Imágenes */}
+      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+        <span className="text-xs text-text-muted self-center mr-2 font-semibold">Imágenes:</span>
+        {postId && (
+          <button
+            type="button"
+            onClick={() => setShowImageUploader(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+            style={{ borderColor: 'var(--border-glow)' }}
+            title="Subir e insertar imagen"
           >
-            <option value="" disabled>Seleccionar opción...</option>
-            <option value="inline">Fórmula Inline ($...$)</option>
-            <option value="block">Fórmula Bloque ($$...$$)</option>
-            <option value="numbered">Fórmula Numerada ({equationCounter})</option>
-            <option value="named">Ecuación con Nombre ({equationCounter})</option>
-            <option value="definition">Definición Numerada ({definitionCounter})</option>
-            <option value="theorem">Teorema Numerado ({theoremCounter})</option>
-          </select>
-          
-          <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Avanzadas:</span>
-          <select
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === 'integral') insertIntegral();
-              else if (value === 'summation') insertSummation();
-              else if (value === 'matrix') insertMatrix();
-              else if (value === 'complex-fraction') insertComplexFraction();
-              else if (value === 'aligned') insertAlignedEquations();
-              else if (value === 'cases') insertCaseFunction();
-              // Resetear el select
-              e.target.value = '';
-            }}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
-            style={{ 
-              borderColor: 'var(--border-glow)',
-              backgroundColor: 'rgb(26, 26, 46)', // Fondo oscuro opaco 100%
-              color: 'var(--text-secondary)'
-            }}
-            defaultValue=""
-          >
-            <option value="" disabled>Seleccionar opción...</option>
-            <option value="integral">Integral</option>
-            <option value="summation">Sumatoria</option>
-            <option value="matrix">Matriz</option>
-            <option value="complex-fraction">Fracción Compleja</option>
-            <option value="aligned">Ecuaciones Alineadas</option>
-            <option value="cases">Función por Casos</option>
-          </select>
-          
-          <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Anclas:</span>
-          <select
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === 'eq-anchor') insertAnchoredEquation();
-              else if (value === 'eq-anchor-desc') insertAnchoredEquationWithDescription();
-              else if (value === 'def-anchor') insertAnchoredDefinition();
-              else if (value === 'def-anchor-desc') insertAnchoredDefinitionWithDescription();
-              else if (value === 'thm-anchor') insertAnchoredTheorem();
-              else if (value === 'thm-anchor-desc') insertAnchoredTheoremWithDescription();
-              // Resetear el select
-              e.target.value = '';
-            }}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
-            style={{ 
-              borderColor: 'var(--border-glow)',
-              backgroundColor: 'rgb(26, 26, 46)', // Fondo oscuro opaco 100%
-              color: 'var(--text-secondary)'
-            }}
-            defaultValue=""
-          >
-            <option value="" disabled>Seleccionar opción...</option>
-            <option value="eq-anchor">Ecuación con Ancla</option>
-            <option value="eq-anchor-desc">Ecuación + Descripción</option>
-            <option value="def-anchor">Definición con Ancla</option>
-            <option value="def-anchor-desc">Definición + Descripción</option>
-            <option value="thm-anchor">Teorema con Ancla</option>
-            <option value="thm-anchor-desc">Teorema + Descripción</option>
-          </select>
-          
+            Subir Imagen
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={insertImageAnchor}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar imagen con ancla (para referencias)"
+        >
+          Imagen con Ancla
+        </button>
+        <button
+          type="button"
+          onClick={insertImageAnchorWithDescription}
+          className="px-3 py-1.5 text-xs font-medium rounded bg-nebula-purple/20 border border-nebula-purple/50 transition-colors hover:bg-nebula-purple/30 text-nebula-purple hover:text-nebula-purple"
+          title="Insertar imagen con ancla y descripción (para IA)"
+        >
+          Imagen con Ancla + Descripción
+        </button>
+        {postId && (
           <button
             type="button"
             onClick={(e) => {
@@ -608,57 +919,22 @@ export default function MarkdownEditor({
               e.stopPropagation();
               setShowReferenceModal(true);
             }}
-            className="px-4 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan ml-4"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar referencia a ecuación, imagen, definición o teorema"
-          >
-            🔗 Referencias
-          </button>
-        </div>
-
-        {/* Imágenes */}
-        <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-          <span className="text-xs text-text-muted self-center mr-2 font-semibold">Imágenes:</span>
-          {postId && (
-            <button
-              type="button"
-              onClick={() => setShowImageUploader(true)}
-              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              style={{ borderColor: 'var(--border-glow)' }}
-              title="Subir e insertar imagen"
-            >
-              Subir Imagen
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={insertImageAnchor}
             className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
             style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar imagen con ancla (para referencias)"
+            title="Insertar referencia a imagen existente"
           >
-            Imagen con Ancla
+            Insertar Referencia a Imagen
           </button>
-          <button
-            type="button"
-            onClick={insertImageAnchorWithDescription}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-nebula-purple/20 border border-nebula-purple/50 transition-colors hover:bg-nebula-purple/30 text-nebula-purple hover:text-nebula-purple"
-            title="Insertar imagen con ancla y descripción (para IA)"
-          >
-            Imagen con Ancla + Descripción
-          </button>
-          {postId && (
-            <button
-              type="button"
-              onClick={() => setShowImageReferenceSelector(true)}
-              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              style={{ borderColor: 'var(--border-glow)' }}
-              title="Insertar referencia a imagen existente"
-            >
-              Insertar Referencia a Imagen
-            </button>
-          )}
-        </div>
+        )}
+      </div>
+    </div>
+  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertImageAnchor, insertImageAnchorWithDescription, setShowReferenceModal, setShowImageUploader]);
+
+  return (
+    <div className="w-full relative">
+      {/* Botones de acción rápida */}
+      <div ref={toolbarRef} className="mb-4 space-y-3">
+        {renderToolbar()}
       </div>
 
       {/* Modal unificado de referencias */}
@@ -681,6 +957,67 @@ export default function MarkdownEditor({
           onSelect={handleImageSelect}
           onClose={() => setShowImageUploader(false)}
         />
+      )}
+
+      {/* Botón flotante para herramientas */}
+      {showFloatingButton && (
+        <button
+          type="button"
+          onClick={() => setShowFloatingToolbar(true)}
+          className="fixed right-4 top-1/2 -translate-y-1/2 z-50 px-4 py-3 rounded-lg border shadow-lg transition-all hover:scale-105 hover:shadow-xl text-text-secondary hover:text-star-cyan animate-in fade-in slide-in-from-right duration-300"
+          style={{ 
+            borderColor: 'var(--border-glow)',
+            backgroundColor: 'rgba(26, 26, 46, 0.95)',
+            backdropFilter: 'blur(10px)'
+          }}
+          title="Abrir herramientas"
+        >
+          <span className="text-lg font-semibold">⚙️</span>
+          <span className="ml-2 text-sm font-medium hidden sm:inline">Herramientas</span>
+        </button>
+      )}
+
+      {/* Panel lateral (Drawer) */}
+      {showFloatingToolbar && (
+        <>
+          {/* Overlay de fondo */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
+            onClick={() => {
+              setIsPanelAnimating(false);
+              setTimeout(() => setShowFloatingToolbar(false), 300);
+            }}
+          />
+          
+          {/* Panel lateral */}
+          <div 
+            className={`fixed right-0 top-0 h-full w-96 max-w-[90vw] bg-space-primary border-l z-[70] transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col ${
+              isPanelAnimating ? 'translate-x-0' : 'translate-x-full'
+            }`}
+            style={{ borderColor: 'var(--border-glow)' }}
+          >
+            {/* Header del panel */}
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-glow)' }}>
+              <h2 className="text-lg font-semibold text-text-primary">Herramientas</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPanelAnimating(false);
+                  setTimeout(() => setShowFloatingToolbar(false), 300);
+                }}
+                className="text-text-muted hover:text-text-primary transition-colors p-1 rounded hover:bg-space-secondary"
+                title="Cerrar (Esc)"
+              >
+                <span className="text-xl">×</span>
+              </button>
+            </div>
+            
+            {/* Contenido del panel con scroll */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {renderToolbar()}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Tabs para cambiar vista */}
@@ -723,6 +1060,123 @@ export default function MarkdownEditor({
         </button>
       </div>
 
+      {/* Barra de herramientas de formato */}
+      {(view === 'edit' || view === 'split') && (
+        <div className="mb-3 p-2 rounded-lg border flex flex-wrap gap-1 items-center" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+          {/* Formato de texto */}
+          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
+            <button
+              type="button"
+              onClick={applyBold}
+              className="px-3 py-1.5 text-sm font-bold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Negrita (Ctrl+B)"
+            >
+              <strong>B</strong>
+            </button>
+            <button
+              type="button"
+              onClick={applyItalic}
+              className="px-3 py-1.5 text-sm italic rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Cursiva (Ctrl+I)"
+            >
+              <em>I</em>
+            </button>
+            <button
+              type="button"
+              onClick={applyUnderline}
+              className="px-3 py-1.5 text-sm underline rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Subrayado"
+            >
+              <u>U</u>
+            </button>
+            <button
+              type="button"
+              onClick={applyStrikethrough}
+              className="px-3 py-1.5 text-sm line-through rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Tachado"
+            >
+              <span style={{ textDecoration: 'line-through' }}>S</span>
+            </button>
+          </div>
+
+          {/* Encabezados */}
+          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
+            <button
+              type="button"
+              onClick={() => applyHeading(1)}
+              className="px-2 py-1.5 text-xs font-semibold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Encabezado 1"
+            >
+              H1
+            </button>
+            <button
+              type="button"
+              onClick={() => applyHeading(2)}
+              className="px-2 py-1.5 text-xs font-semibold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Encabezado 2"
+            >
+              H2
+            </button>
+            <button
+              type="button"
+              onClick={() => applyHeading(3)}
+              className="px-2 py-1.5 text-xs font-semibold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Encabezado 3"
+            >
+              H3
+            </button>
+          </div>
+
+          {/* Listas */}
+          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
+            <button
+              type="button"
+              onClick={() => applyList(false)}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Lista no ordenada"
+            >
+              • Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => applyList(true)}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Lista ordenada"
+            >
+              1. Lista
+            </button>
+          </div>
+
+          {/* Enlace y código */}
+          <div className="flex gap-1 items-center">
+            <button
+              type="button"
+              onClick={applyLink}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Enlace"
+            >
+              🔗 Enlace
+            </button>
+            <button
+              type="button"
+              onClick={applyCode}
+              className="px-3 py-1.5 text-xs font-mono rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Código inline"
+            >
+              `código`
+            </button>
+            <button
+              type="button"
+              onClick={applyCodeBlock}
+              className="px-3 py-1.5 text-xs font-mono rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Bloque de código"
+            >
+              ```bloque```
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Contenedor del editor */}
       <div className="flex gap-4" style={{ minHeight: '500px' }}>
         {/* Editor */}
@@ -751,6 +1205,8 @@ export default function MarkdownEditor({
               borderColor: 'var(--border-glow)',
               backgroundColor: 'rgba(26, 26, 46, 0.3)',
               minHeight: '500px',
+              overflowX: 'hidden',
+              maxWidth: '100%',
             }}
           >
             {value ? (

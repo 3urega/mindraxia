@@ -40,6 +40,8 @@ export default function DefinitionAnchor({
       style={{
         borderColor: 'rgba(34, 211, 238, 0.5)', // cyan
         backgroundColor: 'rgba(34, 211, 238, 0.1)',
+        overflowX: 'hidden',
+        maxWidth: '100%',
       }}
     >
       {/* Título de la definición */}
@@ -65,7 +67,16 @@ export default function DefinitionAnchor({
       )}
 
       {/* Contenido de la definición */}
-      <div className="text-text-secondary">
+      <div 
+        className="text-text-secondary"
+        style={{
+          wordWrap: 'break-word',
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word',
+          whiteSpace: 'normal',
+          maxWidth: '100%',
+        }}
+      >
         {children}
       </div>
     </div>

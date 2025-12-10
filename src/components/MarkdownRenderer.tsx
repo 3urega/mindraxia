@@ -172,15 +172,8 @@ export default function MarkdownRenderer({
     ? { fontFamily: 'var(--font-roboto), sans-serif' }
     : {};
 
-  return (
-    <div className={`prose prose-invert max-w-none ${fontSizeClass} ${fontFamilyClass}`} style={fontFamilyStyle}>
-      <ReactMarkdown
-            remarkPlugins={[remarkMath, remarkGfm]}
-            rehypePlugins={[[rehypeKatex, { 
-              throwOnError: false,
-              strict: false,
-            }]]}
-            components={{
+  // Componentes personalizados para ReactMarkdown (reutilizables para definiciones y teoremas)
+  const markdownComponents = {
           // Estilos personalizados para elementos markdown
           h1: ({ node, ...props }) => (
             <h1 className="text-4xl font-bold text-text-primary mb-4 mt-8" {...props} />
@@ -280,19 +273,53 @@ export default function MarkdownRenderer({
             const processedChildren = processChildren(children);
             
             return (
-              <p className="text-text-secondary mb-4 leading-relaxed" {...props}>
+              <p 
+                className="text-text-secondary mb-4 leading-relaxed" 
+                style={{
+                  wordWrap: 'break-word',
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'normal',
+                  maxWidth: '100%',
+                }}
+                {...props}
+              >
                 {processedChildren}
               </p>
             );
           },
           ul: ({ node, ...props }) => (
-            <ul className="list-disc list-inside mb-4 text-text-secondary space-y-2" {...props} />
+            <ul 
+              className="list-disc list-inside mb-4 text-text-secondary space-y-2" 
+              style={{
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+              }}
+              {...props} 
+            />
           ),
           ol: ({ node, ...props }) => (
-            <ol className="list-decimal list-inside mb-4 text-text-secondary space-y-2" {...props} />
+            <ol 
+              className="list-decimal list-inside mb-4 text-text-secondary space-y-2" 
+              style={{
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+              }}
+              {...props} 
+            />
           ),
           li: ({ node, ...props }) => (
-            <li className="ml-4" {...props} />
+            <li 
+              className="ml-4" 
+              style={{
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                wordBreak: 'break-word',
+              }}
+              {...props} 
+            />
           ),
           code: ({ node, inline, className, children, ...props }: any) => {
             if (inline) {
@@ -404,15 +431,50 @@ export default function MarkdownRenderer({
                   number={number}
                   postSlug={slug}
                 >
-                  <ReactMarkdown
-                    remarkPlugins={[remarkMath, remarkGfm]}
-                    rehypePlugins={[[rehypeKatex, { 
-                      throwOnError: false,
-                      strict: false,
-                    }]]}
+                  <div
+                    style={{
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                      maxWidth: '100%',
+                      overflowX: 'hidden',
+                    }}
                   >
-                    {definitionContent}
-                  </ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[[rehypeKatex, { 
+                        throwOnError: false,
+                        strict: false,
+                      }]]}
+                      components={{
+                        ...markdownComponents,
+                        code: ({ node, inline, className, children, ...props }: any) => {
+                          if (inline) {
+                            return (
+                              <code
+                                className="px-2 py-1 rounded bg-space-primary text-star-cyan text-sm font-mono"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          }
+                          // Para bloques de código dentro de definiciones, usar el estilo normal
+                          return (
+                            <code
+                              className="block p-4 rounded-lg bg-space-primary text-text-secondary text-sm font-mono overflow-x-auto mb-4"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {definitionContent}
+                    </ReactMarkdown>
+                  </div>
                 </DefinitionAnchor>
               );
             }
@@ -455,15 +517,50 @@ export default function MarkdownRenderer({
                   number={number}
                   postSlug={slug}
                 >
-                  <ReactMarkdown
-                    remarkPlugins={[remarkMath, remarkGfm]}
-                    rehypePlugins={[[rehypeKatex, { 
-                      throwOnError: false,
-                      strict: false,
-                    }]]}
+                  <div
+                    style={{
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                      maxWidth: '100%',
+                      overflowX: 'hidden',
+                    }}
                   >
-                    {theoremContent}
-                  </ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[[rehypeKatex, { 
+                        throwOnError: false,
+                        strict: false,
+                      }]]}
+                      components={{
+                        ...markdownComponents,
+                        code: ({ node, inline, className, children, ...props }: any) => {
+                          if (inline) {
+                            return (
+                              <code
+                                className="px-2 py-1 rounded bg-space-primary text-star-cyan text-sm font-mono"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          }
+                          // Para bloques de código dentro de teoremas, usar el estilo normal
+                          return (
+                            <code
+                              className="block p-4 rounded-lg bg-space-primary text-text-secondary text-sm font-mono overflow-x-auto mb-4"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {theoremContent}
+                    </ReactMarkdown>
+                  </div>
                 </TheoremAnchor>
               );
             }
@@ -559,7 +656,27 @@ export default function MarkdownRenderer({
           em: ({ node, ...props }) => (
             <em className="italic" {...props} />
           ),
-        }}
+        };
+
+  return (
+    <div 
+      className={`prose prose-invert max-w-none ${fontSizeClass} ${fontFamilyClass}`} 
+      style={{
+        ...fontFamilyStyle,
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+        wordBreak: 'break-word',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+      }}
+    >
+      <ReactMarkdown
+            remarkPlugins={[remarkMath, remarkGfm]}
+            rehypePlugins={[[rehypeKatex, { 
+              throwOnError: false,
+              strict: false,
+            }]]}
+            components={markdownComponents}
       >
         {processedContent}
       </ReactMarkdown>

@@ -40,6 +40,8 @@ export default function TheoremAnchor({
       style={{
         borderColor: 'rgba(34, 197, 94, 0.5)', // green
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        overflowX: 'hidden',
+        maxWidth: '100%',
       }}
     >
       {/* Título del teorema */}
@@ -65,7 +67,16 @@ export default function TheoremAnchor({
       )}
 
       {/* Contenido del teorema */}
-      <div className="text-text-secondary">
+      <div 
+        className="text-text-secondary"
+        style={{
+          wordWrap: 'break-word',
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word',
+          whiteSpace: 'normal',
+          maxWidth: '100%',
+        }}
+      >
         {children}
       </div>
     </div>
