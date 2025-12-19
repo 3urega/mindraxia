@@ -4,6 +4,16 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import ScrollToAnchor from '@/components/ScrollToAnchor';
 import FontSizeSelector from '@/components/FontSizeSelector';
 import SocialShareButtons from '@/components/SocialShareButtons';
+import AssociatedPostsList from '@/components/AssociatedPostsList';
+
+interface AssociatedPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  createdAt: string;
+  publishedAt: string | null;
+}
 
 interface Post {
   id: string;
@@ -22,6 +32,7 @@ interface Post {
   tags: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string; slug: string }>;
   subcategories: Array<{ id: string; name: string; slug: string; category: { id: string; name: string; slug: string } }>;
+  associatedPosts?: AssociatedPost[];
 }
 
 async function getPost(slug: string): Promise<Post | null> {
@@ -69,6 +80,22 @@ async function getPost(slug: string): Promise<Post | null> {
             },
           },
         },
+        associatedPosts: {
+          where: {
+            published: true,
+          },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            createdAt: true,
+            publishedAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -109,6 +136,15 @@ async function getPost(slug: string): Promise<Post | null> {
           name: sub.category.name,
           slug: sub.category.slug,
         },
+      })),
+      associatedPosts: post.associatedPosts.map((ap) => ({
+        id: ap.id,
+        title: ap.title,
+        slug: ap.slug,
+        excerpt: ap.excerpt,
+        published: true,
+        createdAt: ap.createdAt.toISOString(),
+        publishedAt: ap.publishedAt?.toISOString() ?? null,
       })),
     };
   } catch (error) {
@@ -264,6 +300,14 @@ export default async function PostPage({
       >
         <MarkdownRenderer content={post.content} currentSlug={post.slug} />
       </div>
+
+      {/* Posts Asociados */}
+      {post.associatedPosts && post.associatedPosts.length > 0 && (
+        <AssociatedPostsList
+          posts={post.associatedPosts}
+          showAdminActions={false}
+        />
+      )}
 
       {/* Footer del post */}
       <footer className="mt-12 pt-8">

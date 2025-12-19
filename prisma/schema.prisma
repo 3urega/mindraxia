@@ -38,9 +38,13 @@ model Post {
   images      Image[]
   definitions Definition[]
   theorems    Theorem[]
+  parentPostId String?     // ID del post padre (opcional)
+  parentPost   Post?       @relation("PostAssociations", fields: [parentPostId], references: [id], onDelete: Cascade)
+  associatedPosts Post[]   @relation("PostAssociations")
   
   @@index([slug])
   @@index([published])
+  @@index([parentPostId])
 }
 
 model Tag {

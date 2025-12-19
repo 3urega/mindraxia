@@ -43,6 +43,22 @@ export async function GET(
             name: true,
           },
         },
+        associatedPosts: {
+          where: {
+            published: true,
+          },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            createdAt: true,
+            publishedAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -75,6 +91,14 @@ export async function GET(
       tags: post.tags.map((tag) => ({
         id: tag.id,
         name: tag.name,
+      })),
+      associatedPosts: post.associatedPosts.map((ap) => ({
+        id: ap.id,
+        title: ap.title,
+        slug: ap.slug,
+        excerpt: ap.excerpt,
+        createdAt: ap.createdAt.toISOString(),
+        publishedAt: ap.publishedAt?.toISOString() ?? null,
       })),
     };
 

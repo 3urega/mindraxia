@@ -555,6 +555,134 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar límite genérico
+  const insertLimit = () => {
+    const template = '\\lim\\limits_{x \\to a} \\frac{f(x)}{g(x)}';
+    insertText(template);
+    // Mover cursor a la posición de 'a' (límite)
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('a}') - 1;
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
+  // Insertar derivada
+  const insertDerivative = () => {
+    const template = '\\frac{d}{dx}f(x)';
+    insertText(template);
+    // Mover cursor a f(x)
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('f(x)');
+        textarea.setSelectionRange(newPos, newPos + 3);
+      }
+    }, 10);
+  };
+
+  // Insertar fracción simple
+  const insertFraction = () => {
+    const template = '\\frac{a}{b}';
+    insertText(template);
+    // Mover cursor al numerador
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('a}') - 1;
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
+  // Insertar raíz cuadrada
+  const insertSquareRoot = () => {
+    const template = '\\sqrt{x}';
+    insertText(template);
+    // Mover cursor a x
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('x}') - 1;
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
+  // Insertar potencia/exponente
+  const insertPower = () => {
+    const template = 'x^{n}';
+    insertText(template);
+    // Mover cursor al exponente
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('n}') - 1;
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
+  // Insertar logaritmo
+  const insertLogarithm = () => {
+    const template = '\\log(x)';
+    insertText(template);
+    // Mover cursor a x
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('x)') - 1;
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
+  // Insertar exponencial
+  const insertExponential = () => {
+    const template = 'e^{x}';
+    insertText(template);
+    // Mover cursor al exponente
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('x}') - 1;
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
+  // Insertar producto
+  const insertProduct = () => {
+    const template = '\\prod_{i=1}^{n} a_i';
+    insertText(template);
+    // Mover cursor a a_i
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('a_i');
+        textarea.setSelectionRange(newPos, newPos + 3);
+      }
+    }, 10);
+  };
+
   // Insertar imagen
   const handleImageSelect = (url: string, alt: string, anchorId?: string, description?: string) => {
     let markdownText = '';
@@ -927,8 +1055,85 @@ export default function MarkdownEditor({
           </button>
         )}
       </div>
+
+      {/* Expresiones Matemáticas Comunes */}
+      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+        <span className="text-xs text-text-muted self-center mr-2 font-semibold w-full mb-2">Expresiones Comunes:</span>
+        <button
+          type="button"
+          onClick={insertLimit}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar límite: lim_{x→a} f(x)/g(x)"
+        >
+          Lim
+        </button>
+        <button
+          type="button"
+          onClick={insertDerivative}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar derivada: d/dx f(x)"
+        >
+          d/dx
+        </button>
+        <button
+          type="button"
+          onClick={insertFraction}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar fracción: a/b"
+        >
+          a/b
+        </button>
+        <button
+          type="button"
+          onClick={insertSquareRoot}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar raíz cuadrada: √x"
+        >
+          √
+        </button>
+        <button
+          type="button"
+          onClick={insertPower}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar potencia: x^n"
+        >
+          x^n
+        </button>
+        <button
+          type="button"
+          onClick={insertLogarithm}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar logaritmo: log(x)"
+        >
+          log
+        </button>
+        <button
+          type="button"
+          onClick={insertExponential}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar exponencial: e^x"
+        >
+          e^x
+        </button>
+        <button
+          type="button"
+          onClick={insertProduct}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar producto: ∏ a_i"
+        >
+          ∏
+        </button>
+      </div>
     </div>
-  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertImageAnchor, insertImageAnchorWithDescription, setShowReferenceModal, setShowImageUploader]);
+  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
 
   return (
     <div className="w-full relative">
@@ -959,22 +1164,45 @@ export default function MarkdownEditor({
         />
       )}
 
-      {/* Botón flotante para herramientas */}
+      {/* Botones flotantes */}
       {showFloatingButton && (
-        <button
-          type="button"
-          onClick={() => setShowFloatingToolbar(true)}
-          className="fixed right-4 top-1/2 -translate-y-1/2 z-50 px-4 py-3 rounded-lg border shadow-lg transition-all hover:scale-105 hover:shadow-xl text-text-secondary hover:text-star-cyan animate-in fade-in slide-in-from-right duration-300"
-          style={{ 
-            borderColor: 'var(--border-glow)',
-            backgroundColor: 'rgba(26, 26, 46, 0.95)',
-            backdropFilter: 'blur(10px)'
-          }}
-          title="Abrir herramientas"
-        >
-          <span className="text-lg font-semibold">⚙️</span>
-          <span className="ml-2 text-sm font-medium hidden sm:inline">Herramientas</span>
-        </button>
+        <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
+          {/* Botón flotante para herramientas */}
+          <button
+            type="button"
+            onClick={() => setShowFloatingToolbar(true)}
+            className="px-4 py-3 rounded-lg border shadow-lg transition-all hover:scale-105 hover:shadow-xl text-text-secondary hover:text-star-cyan animate-in fade-in slide-in-from-right duration-300"
+            style={{ 
+              borderColor: 'var(--border-glow)',
+              backgroundColor: 'rgba(26, 26, 46, 0.95)',
+              backdropFilter: 'blur(10px)'
+            }}
+            title="Abrir herramientas"
+          >
+            <span className="text-lg font-semibold">⚙️</span>
+            <span className="ml-2 text-sm font-medium hidden sm:inline">Herramientas</span>
+          </button>
+          
+          {/* Botón flotante para referencias */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowReferenceModal(true);
+            }}
+            className="px-4 py-3 rounded-lg border shadow-lg transition-all hover:scale-105 hover:shadow-xl text-text-secondary hover:text-star-cyan animate-in fade-in slide-in-from-right duration-300"
+            style={{ 
+              borderColor: 'var(--border-glow)',
+              backgroundColor: 'rgba(26, 26, 46, 0.95)',
+              backdropFilter: 'blur(10px)'
+            }}
+            title="Insertar referencia a ecuación, imagen, definición o teorema"
+          >
+            <span className="text-lg font-semibold">🔗</span>
+            <span className="ml-2 text-sm font-medium hidden sm:inline">Referencias</span>
+          </button>
+        </div>
       )}
 
       {/* Panel lateral (Drawer) */}

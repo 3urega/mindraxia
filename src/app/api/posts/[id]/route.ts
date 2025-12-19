@@ -79,6 +79,26 @@ export async function GET(
             },
           },
         },
+        parentPost: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+        associatedPosts: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            published: true,
+            createdAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -104,6 +124,20 @@ export async function GET(
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
       publishedAt: post.publishedAt?.toISOString() ?? null,
+      parentPostId: post.parentPostId,
+      parentPost: post.parentPost ? {
+        id: post.parentPost.id,
+        title: post.parentPost.title,
+        slug: post.parentPost.slug,
+      } : null,
+      associatedPosts: post.associatedPosts.map((ap) => ({
+        id: ap.id,
+        title: ap.title,
+        slug: ap.slug,
+        excerpt: ap.excerpt,
+        published: ap.published,
+        createdAt: ap.createdAt.toISOString(),
+      })),
       author: post.author,
       tags: post.tags,
       categories: post.categories,
@@ -136,6 +170,7 @@ const updatePostSchema = z.object({
   categoryIds: z.array(z.string()).optional(),
   subcategoryIds: z.array(z.string()).optional(),
   published: z.boolean().optional(),
+  parentPostId: z.string().nullable().optional(),
 });
 
 export async function PUT(
@@ -233,12 +268,76 @@ export async function PUT(
       }
     }
 
+    // Validar parentPostId si se actualiza
+    if (updateData.parentPostId !== undefined) {
+      // Si se establece a null, simplemente eliminar la relación
+      if (updateData.parentPostId === null) {
+        // Permitir eliminar la relación
+      } else if (updateData.parentPostId !== existingPost.parentPostId) {
+        // Verificar que el post padre existe
+        const parentPost = await prisma.post.findUnique({
+          where: { id: updateData.parentPostId },
+          include: {
+            parentPost: true,
+          },
+        });
+
+        if (!parentPost) {
+          return NextResponse.json(
+            {
+              error: 'Bad Request',
+              message: 'El post padre especificado no existe',
+            },
+            { status: 400 }
+          );
+        }
+
+        // Validar que el post padre no tiene un padre (evitar jerarquías)
+        if (parentPost.parentPostId) {
+          return NextResponse.json(
+            {
+              error: 'Bad Request',
+              message: 'No se pueden crear jerarquías de posts. El post padre ya tiene un post padre.',
+            },
+            { status: 400 }
+          );
+        }
+
+        // Validar que no se cree un ciclo (el post padre no puede ser el mismo post)
+        if (updateData.parentPostId === id) {
+          return NextResponse.json(
+            {
+              error: 'Bad Request',
+              message: 'Un post no puede ser su propio padre',
+            },
+            { status: 400 }
+          );
+        }
+
+        // Validar que el post actual no tiene posts asociados (evitar jerarquías)
+        const hasAssociatedPosts = await prisma.post.count({
+          where: { parentPostId: id },
+        });
+
+        if (hasAssociatedPosts > 0) {
+          return NextResponse.json(
+            {
+              error: 'Bad Request',
+              message: 'No se pueden crear jerarquías. Este post ya tiene posts asociados.',
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Preparar datos de actualización
     const dataToUpdate: any = {};
     if (updateData.title !== undefined) dataToUpdate.title = updateData.title;
     if (updateData.slug !== undefined) dataToUpdate.slug = updateData.slug;
     if (updateData.content !== undefined) dataToUpdate.content = updateData.content;
     if (updateData.excerpt !== undefined) dataToUpdate.excerpt = updateData.excerpt || null;
+    if (updateData.parentPostId !== undefined) dataToUpdate.parentPostId = updateData.parentPostId;
 
     // Manejar published y publishedAt
     if (updateData.published !== undefined) {
@@ -343,6 +442,26 @@ export async function PUT(
             name: true,
           },
         },
+        parentPost: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+        associatedPosts: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            published: true,
+            createdAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -373,6 +492,20 @@ export async function PUT(
       createdAt: updatedPost.createdAt.toISOString(),
       updatedAt: updatedPost.updatedAt.toISOString(),
       publishedAt: updatedPost.publishedAt?.toISOString() ?? null,
+      parentPostId: updatedPost.parentPostId,
+      parentPost: updatedPost.parentPost ? {
+        id: updatedPost.parentPost.id,
+        title: updatedPost.parentPost.title,
+        slug: updatedPost.parentPost.slug,
+      } : null,
+      associatedPosts: updatedPost.associatedPosts.map((ap) => ({
+        id: ap.id,
+        title: ap.title,
+        slug: ap.slug,
+        excerpt: ap.excerpt,
+        published: ap.published,
+        createdAt: ap.createdAt.toISOString(),
+      })),
       author: updatedPost.author,
       tags: updatedPost.tags,
       categories: updatedPost.categories,

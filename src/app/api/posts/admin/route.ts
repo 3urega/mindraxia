@@ -57,6 +57,27 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        parentPost: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+        associatedPosts: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            published: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
       orderBy: {
         updatedAt: 'desc',
@@ -73,6 +94,21 @@ export async function GET(request: NextRequest) {
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
       publishedAt: post.publishedAt?.toISOString() ?? null,
+      parentPostId: post.parentPostId,
+      parentPost: post.parentPost ? {
+        id: post.parentPost.id,
+        title: post.parentPost.title,
+        slug: post.parentPost.slug,
+      } : null,
+      associatedPosts: post.associatedPosts.map((ap) => ({
+        id: ap.id,
+        title: ap.title,
+        slug: ap.slug,
+        excerpt: ap.excerpt,
+        published: ap.published,
+        createdAt: ap.createdAt.toISOString(),
+        updatedAt: ap.updatedAt.toISOString(),
+      })),
       author: {
         id: post.author.id,
         name: post.author.name,

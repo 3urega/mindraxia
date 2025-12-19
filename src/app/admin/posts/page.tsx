@@ -4,6 +4,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+interface AssociatedPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Post {
   id: string;
   title: string;
@@ -13,6 +23,9 @@ interface Post {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+  parentPostId: string | null;
+  parentPost: { id: string; title: string; slug: string } | null;
+  associatedPosts: AssociatedPost[];
   author: { id: string; name: string };
   tags: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string; slug: string }>;
@@ -49,6 +62,7 @@ export default function AdminPostsPage() {
   const [error, setError] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchPosts();
@@ -203,26 +217,61 @@ export default function AdminPostsPage() {
     );
   }, [selectedCategoryId, organizedData]);
 
-  // Obtener posts a mostrar según la selección
+  // Organizar posts con sus asociados anidados
+  const organizePostsWithAssociations = useMemo(() => {
+    // Separar posts padres (sin parentPostId) de posts asociados (con parentPostId)
+    const parentPosts: Post[] = [];
+    const associatedPostsMap = new Map<string, Post[]>();
+    
+    posts.forEach((post) => {
+      if (post.parentPostId) {
+        // Es un post asociado
+        if (!associatedPostsMap.has(post.parentPostId)) {
+          associatedPostsMap.set(post.parentPostId, []);
+        }
+        associatedPostsMap.get(post.parentPostId)!.push(post);
+      } else {
+        // Es un post padre
+        parentPosts.push(post);
+      }
+    });
+    
+    // Crear lista final con posts asociados anidados
+    const organized: Post[] = [];
+    parentPosts.forEach((parentPost) => {
+      organized.push(parentPost);
+      // Agregar posts asociados después del padre
+      const associated = associatedPostsMap.get(parentPost.id) || [];
+      organized.push(...associated);
+    });
+    
+    return organized;
+  }, [posts]);
+
+  // Obtener posts a mostrar según la selección (solo posts padre, sin asociados)
   const postsToShow = useMemo(() => {
+    let filteredPosts: Post[] = [];
+    
     if (selectedSubcategoryId === 'no-subcategory' && selectedCategoryId && organizedData.data[selectedCategoryId]) {
       // Mostrar solo posts sin subcategoría de esta categoría
-      return organizedData.data[selectedCategoryId].postsWithoutSubcategory;
-    }
-    if (selectedSubcategoryId && selectedCategoryId && organizedData.data[selectedCategoryId]) {
-      return organizedData.data[selectedCategoryId].subcategories[selectedSubcategoryId]?.posts || [];
-    }
-    if (selectedCategoryId && organizedData.data[selectedCategoryId]) {
+      filteredPosts = organizedData.data[selectedCategoryId].postsWithoutSubcategory;
+    } else if (selectedSubcategoryId && selectedCategoryId && organizedData.data[selectedCategoryId]) {
+      filteredPosts = organizedData.data[selectedCategoryId].subcategories[selectedSubcategoryId]?.posts || [];
+    } else if (selectedCategoryId && organizedData.data[selectedCategoryId]) {
       // Mostrar todos los posts de la categoría (con y sin subcategoría)
       const categoryData = organizedData.data[selectedCategoryId];
       const postsWithSubcategory = Object.values(categoryData.subcategories).flatMap(
         (item) => item.posts
       );
-      return [...postsWithSubcategory, ...categoryData.postsWithoutSubcategory];
+      filteredPosts = [...postsWithSubcategory, ...categoryData.postsWithoutSubcategory];
+    } else {
+      // Si no hay selección, usar todos los posts organizados
+      filteredPosts = organizePostsWithAssociations;
     }
-    // Si no hay selección, mostrar todos los posts
-    return posts;
-  }, [selectedCategoryId, selectedSubcategoryId, organizedData, posts]);
+    
+    // Filtrar solo posts padre (sin parentPostId)
+    return filteredPosts.filter((post) => !post.parentPostId);
+  }, [selectedCategoryId, selectedSubcategoryId, organizedData, organizePostsWithAssociations]);
 
   const handleCategoryClick = (categoryId: string) => {
     if (selectedCategoryId === categoryId) {
@@ -240,6 +289,18 @@ export default function AdminPostsPage() {
     } else {
       setSelectedSubcategoryId(subcategoryId);
     }
+  };
+
+  const toggleExpandPost = (postId: string) => {
+    setExpandedPosts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
   };
 
   if (loading) {
@@ -402,91 +463,215 @@ export default function AdminPostsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: 'var(--border-glow)' }}>
-                {(selectedCategoryId === 'no-category' ? organizedData.postsWithoutCategory : postsToShow).map((post) => (
-                  <tr key={post.id} className="hover:bg-space-primary/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <Link
-                          href={`/admin/posts/${post.id}`}
-                          className="text-text-primary font-medium hover:text-star-cyan transition-colors"
-                        >
-                          {post.title}
-                        </Link>
-                        {post.excerpt && (
-                          <p className="text-sm text-text-muted mt-1 line-clamp-1">{post.excerpt}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          post.published
-                            ? 'bg-star-cyan/20 text-star-cyan'
-                            : 'bg-star-gold/20 text-star-gold'
-                        }`}
-                      >
-                        {post.published ? 'Publicado' : 'Borrador'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {post.tags.length > 0 ? (
-                          post.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag.id}
-                              className="inline-flex items-center px-2 py-1 rounded text-xs border"
-                              style={{
-                                borderColor: 'var(--border-glow)',
-                                color: 'var(--star-cyan)',
-                              }}
-                            >
-                              {tag.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-text-muted text-xs">Sin tags</span>
-                        )}
-                        {post.tags.length > 3 && (
-                          <span className="text-text-muted text-xs">+{post.tags.length - 3}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-text-muted">
-                      {new Date(post.updatedAt).toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/admin/posts/${post.id}`}
-                          className="px-3 py-1.5 text-sm rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-                          style={{ borderColor: 'var(--border-glow)' }}
-                        >
-                          Editar
-                        </Link>
-                        <button
-                          onClick={() => handleTogglePublished(post.id, post.published)}
-                          className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                {(selectedCategoryId === 'no-category' ? organizedData.postsWithoutCategory.filter((p) => !p.parentPostId) : postsToShow).map((post) => {
+                  const hasAssociatedPosts = post.associatedPosts && post.associatedPosts.length > 0;
+                  const isExpanded = expandedPosts.has(post.id);
+                  
+                  return (
+                    <>
+                      {/* Post padre */}
+                      <tr key={post.id} className="hover:bg-space-primary/30 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-start gap-2">
+                            {hasAssociatedPosts && (
+                              <button
+                                onClick={() => toggleExpandPost(post.id)}
+                                className="mt-1 text-text-muted hover:text-star-cyan transition-colors flex-shrink-0"
+                                title={isExpanded ? 'Colapsar posts asociados' : 'Expandir posts asociados'}
+                              >
+                                <span className={`inline-block transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                                  ▶
+                                </span>
+                              </button>
+                            )}
+                            <div className="flex-1">
+                              <Link
+                                href={`/admin/posts/${post.id}`}
+                                className="font-medium hover:text-star-cyan transition-colors text-text-primary"
+                              >
+                                {post.title}
+                              </Link>
+                              {post.excerpt && (
+                                <p className="text-sm text-text-muted mt-1 line-clamp-1">{post.excerpt}</p>
+                              )}
+                              {hasAssociatedPosts && (
+                                <p className="text-xs text-nebula-purple mt-1">
+                                  {post.associatedPosts.length} {post.associatedPosts.length === 1 ? 'post asociado' : 'posts asociados'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             post.published
-                              ? 'border-star-gold/50 text-star-gold hover:bg-star-gold/10'
-                              : 'border-star-cyan/50 text-star-cyan hover:bg-star-cyan/10'
+                              ? 'bg-star-cyan/20 text-star-cyan'
+                              : 'bg-star-gold/20 text-star-gold'
                           }`}
                         >
-                          {post.published ? 'Despublicar' : 'Publicar'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(post.id, post.title)}
-                          className="px-3 py-1.5 text-sm rounded border transition-colors hover:bg-red-500/10 text-red-400 border-red-500/50 hover:border-red-500"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {post.published ? 'Publicado' : 'Borrador'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {post.tags.length > 0 ? (
+                            post.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="inline-flex items-center px-2 py-1 rounded text-xs border"
+                                style={{
+                                  borderColor: 'var(--border-glow)',
+                                  color: 'var(--star-cyan)',
+                                }}
+                              >
+                                {tag.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-text-muted text-xs">Sin tags</span>
+                          )}
+                          {post.tags.length > 3 && (
+                            <span className="text-text-muted text-xs">+{post.tags.length - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-text-muted">
+                        {new Date(post.updatedAt).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/posts/${post.id}`}
+                            className="px-3 py-1.5 text-sm rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+                            style={{ borderColor: 'var(--border-glow)' }}
+                          >
+                            Editar
+                          </Link>
+                          <button
+                            onClick={() => handleTogglePublished(post.id, post.published)}
+                            className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                              post.published
+                                ? 'border-star-gold/50 text-star-gold hover:bg-star-gold/10'
+                                : 'border-star-cyan/50 text-star-cyan hover:bg-star-cyan/10'
+                            }`}
+                          >
+                            {post.published ? 'Despublicar' : 'Publicar'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(post.id, post.title)}
+                            className="px-3 py-1.5 text-sm rounded border transition-colors hover:bg-red-500/10 text-red-400 border-red-500/50 hover:border-red-500"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Posts asociados (solo si está expandido) */}
+                    {isExpanded && hasAssociatedPosts && post.associatedPosts.map((associatedPost) => {
+                      // Buscar el post completo en la lista de posts para obtener todos los datos
+                      const fullAssociatedPost = posts.find((p) => p.id === associatedPost.id);
+                      if (!fullAssociatedPost) return null;
+                      
+                      return (
+                        <tr key={fullAssociatedPost.id} className="hover:bg-space-primary/30 transition-colors bg-space-primary/10">
+                          <td className="px-6 py-4">
+                            <div className="pl-6 border-l-2" style={{ borderColor: 'var(--nebula-purple)' }}>
+                              <span className="text-xs text-nebula-purple font-medium mb-1 block">↳ Post asociado</span>
+                              <Link
+                                href={`/admin/posts/${fullAssociatedPost.id}`}
+                                className="font-medium hover:text-star-cyan transition-colors text-text-secondary"
+                              >
+                                {fullAssociatedPost.title}
+                              </Link>
+                              {fullAssociatedPost.excerpt && (
+                                <p className="text-sm text-text-muted mt-1 line-clamp-1">{fullAssociatedPost.excerpt}</p>
+                              )}
+                              {fullAssociatedPost.parentPost && (
+                                <p className="text-xs text-text-muted mt-1">
+                                  De: <Link href={`/admin/posts/${fullAssociatedPost.parentPost.id}`} className="text-nebula-purple hover:text-nebula-purple/80">{fullAssociatedPost.parentPost.title}</Link>
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                fullAssociatedPost.published
+                                  ? 'bg-star-cyan/20 text-star-cyan'
+                                  : 'bg-star-gold/20 text-star-gold'
+                              }`}
+                            >
+                              {fullAssociatedPost.published ? 'Publicado' : 'Borrador'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {fullAssociatedPost.tags.length > 0 ? (
+                                fullAssociatedPost.tags.slice(0, 3).map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="inline-flex items-center px-2 py-1 rounded text-xs border"
+                                    style={{
+                                      borderColor: 'var(--border-glow)',
+                                      color: 'var(--star-cyan)',
+                                    }}
+                                  >
+                                    {tag.name}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-text-muted text-xs">Sin tags</span>
+                              )}
+                              {fullAssociatedPost.tags.length > 3 && (
+                                <span className="text-text-muted text-xs">+{fullAssociatedPost.tags.length - 3}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-text-muted">
+                            {new Date(fullAssociatedPost.updatedAt).toLocaleDateString('es-ES', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Link
+                                href={`/admin/posts/${fullAssociatedPost.id}`}
+                                className="px-3 py-1.5 text-sm rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+                                style={{ borderColor: 'var(--border-glow)' }}
+                              >
+                                Editar
+                              </Link>
+                              <button
+                                onClick={() => handleTogglePublished(fullAssociatedPost.id, fullAssociatedPost.published)}
+                                className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                                  fullAssociatedPost.published
+                                    ? 'border-star-gold/50 text-star-gold hover:bg-star-gold/10'
+                                    : 'border-star-cyan/50 text-star-cyan hover:bg-star-cyan/10'
+                                }`}
+                              >
+                                {fullAssociatedPost.published ? 'Despublicar' : 'Publicar'}
+                              </button>
+                              <button
+                                onClick={() => handleDelete(fullAssociatedPost.id, fullAssociatedPost.title)}
+                                className="px-3 py-1.5 text-sm rounded border transition-colors hover:bg-red-500/10 text-red-400 border-red-500/50 hover:border-red-500"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -1,13 +1,24 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import CategorySelector from '@/components/CategorySelector';
 import { generateSlug } from '@/lib/utils';
 
+interface ParentPost {
+  id: string;
+  title: string;
+  slug: string;
+  tags: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug: string }>;
+  subcategories: Array<{ id: string; name: string; slug: string }>;
+}
+
 export default function NewPostPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -19,6 +30,48 @@ export default function NewPostPage() {
   const [published, setPublished] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [parentPostId, setParentPostId] = useState<string | null>(null);
+  const [parentPost, setParentPost] = useState<ParentPost | null>(null);
+  const [loadingParent, setLoadingParent] = useState(false);
+
+  // Cargar información del post padre si existe parentPostId
+  useEffect(() => {
+    const parentId = searchParams.get('parentPostId');
+    if (parentId) {
+      setParentPostId(parentId);
+      setLoadingParent(true);
+      
+      fetch(`/api/posts/${parentId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.id) {
+            setParentPost(data);
+            // Pre-llenar título sugerido
+            if (!title) {
+              const suggestedTitle = `Resumen: ${data.title}`;
+              setTitle(suggestedTitle);
+              setSlug(generateSlug(suggestedTitle));
+            }
+            // Pre-llenar categorías y tags del padre
+            if (data.categories && data.categories.length > 0) {
+              setCategoryIds(data.categories.map((cat: { id: string }) => cat.id));
+            }
+            if (data.subcategories && data.subcategories.length > 0) {
+              setSubcategoryIds(data.subcategories.map((sub: { id: string }) => sub.id));
+            }
+            if (data.tags && data.tags.length > 0) {
+              setTags(data.tags.map((tag: { name: string }) => tag.name).join(', '));
+            }
+          }
+          setLoadingParent(false);
+        })
+        .catch((err) => {
+          console.error('Error loading parent post:', err);
+          setError('Error al cargar el post padre');
+          setLoadingParent(false);
+        });
+    }
+  }, [searchParams]);
 
   // Auto-generar slug desde título
   const handleTitleChange = (newTitle: string) => {
@@ -73,6 +126,7 @@ export default function NewPostPage() {
           categoryIds,
           subcategoryIds,
           published,
+          parentPostId: parentPostId || undefined,
         }),
       });
 
@@ -98,9 +152,38 @@ export default function NewPostPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-text-primary">Nuevo Post</h1>
-        <p className="mt-2 text-text-secondary">Crea un nuevo artículo para el blog</p>
+        <h1 className="text-4xl font-bold text-text-primary">
+          {parentPostId ? 'Nuevo Post Asociado' : 'Nuevo Post'}
+        </h1>
+        <p className="mt-2 text-text-secondary">
+          {parentPostId ? 'Crea un post asociado (resumen o explicación detallada)' : 'Crea un nuevo artículo para el blog'}
+        </p>
       </div>
+
+      {/* Banner de post asociado */}
+      {parentPostId && (
+        <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(139, 92, 246, 0.1)' }}>
+          {loadingParent ? (
+            <p className="text-sm text-text-secondary">Cargando información del post padre...</p>
+          ) : parentPost ? (
+            <div>
+              <p className="text-sm font-semibold text-nebula-purple mb-2">
+                Estás creando un post asociado de:
+              </p>
+              <Link
+                href={`/admin/posts/${parentPost.id}`}
+                className="text-base font-semibold text-star-cyan hover:text-star-cyan/80 transition-colors"
+              >
+                {parentPost.title}
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-yellow-400">
+              No se pudo cargar la información del post padre. El post se creará como asociado de todas formas.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Formulario */}
       <form onSubmit={handleSubmit} className="space-y-6">

@@ -53,6 +53,22 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        associatedPosts: {
+          where: {
+            published: true,
+          },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            excerpt: true,
+            createdAt: true,
+            publishedAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
       orderBy: [
         {
@@ -96,6 +112,14 @@ export async function GET(request: NextRequest) {
           slug: sub.category.slug,
         },
       })),
+      associatedPosts: post.associatedPosts.map((ap) => ({
+        id: ap.id,
+        title: ap.title,
+        slug: ap.slug,
+        excerpt: ap.excerpt,
+        createdAt: ap.createdAt.toISOString(),
+        publishedAt: ap.publishedAt?.toISOString() ?? null,
+      })),
     }));
 
     return NextResponse.json(
@@ -130,6 +154,7 @@ const createPostSchema = z.object({
   categoryIds: z.array(z.string()).optional().default([]),
   subcategoryIds: z.array(z.string()).optional().default([]),
   published: z.boolean().default(false),
+  parentPostId: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -161,7 +186,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, slug, content, excerpt, tags, categoryIds, subcategoryIds, published } = validationResult.data;
+    const { title, slug, content, excerpt, tags, categoryIds, subcategoryIds, published, parentPostId } = validationResult.data;
 
     // Verificar si el slug ya existe
     const existingPost = await prisma.post.findUnique({
@@ -176,6 +201,41 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // Validar parentPostId si se proporciona
+    if (parentPostId) {
+      // Verificar que el post padre existe
+      const parentPost = await prisma.post.findUnique({
+        where: { id: parentPostId },
+        include: {
+          parentPost: true, // Verificar si el padre tiene un padre (evitar jerarquías)
+        },
+      });
+
+      if (!parentPost) {
+        return NextResponse.json(
+          {
+            error: 'Bad Request',
+            message: 'El post padre especificado no existe',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validar que el post padre no tiene un padre (evitar jerarquías anidadas)
+      if (parentPost.parentPostId) {
+        return NextResponse.json(
+          {
+            error: 'Bad Request',
+            message: 'No se pueden crear jerarquías de posts. El post padre ya tiene un post padre.',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validar que no se cree un ciclo (el post padre no puede ser el mismo que se está creando)
+      // Esto ya está cubierto porque el post aún no existe, pero lo validamos por seguridad
     }
 
     // Crear o encontrar tags
@@ -227,6 +287,51 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Si hay parentPostId, opcionalmente copiar categorías/tags del padre si no se proporcionaron
+    let finalCategoryIds = categoryIds || [];
+    let finalSubcategoryIds = subcategoryIds || [];
+    let finalTags = tags || [];
+
+    if (parentPostId && (finalCategoryIds.length === 0 || finalSubcategoryIds.length === 0 || finalTags.length === 0)) {
+      const parentPost = await prisma.post.findUnique({
+        where: { id: parentPostId },
+        include: {
+          categories: true,
+          subcategories: true,
+          tags: true,
+        },
+      });
+
+      if (parentPost) {
+        if (finalCategoryIds.length === 0 && parentPost.categories.length > 0) {
+          finalCategoryIds = parentPost.categories.map((cat) => cat.id);
+        }
+        if (finalSubcategoryIds.length === 0 && parentPost.subcategories.length > 0) {
+          finalSubcategoryIds = parentPost.subcategories.map((sub) => sub.id);
+        }
+        if (finalTags.length === 0 && parentPost.tags.length > 0) {
+          finalTags = parentPost.tags.map((tag) => tag.name);
+        }
+      }
+    }
+
+    // Actualizar las conexiones con los valores finales
+    const finalCategoryConnections = finalCategoryIds.map((catId: string) => ({ id: catId }));
+    const finalSubcategoryConnections = finalSubcategoryIds.map((subId: string) => ({ id: subId }));
+    
+    // Re-crear tagConnections con los tags finales
+    const finalTagConnections = await Promise.all(
+      finalTags.map(async (tagName) => {
+        const tagNameLower = tagName.toLowerCase().trim();
+        const tag = await prisma.tag.upsert({
+          where: { name: tagNameLower },
+          update: {},
+          create: { name: tagNameLower },
+        });
+        return { id: tag.id };
+      })
+    );
+
     // Crear el post
     const post = await prisma.post.create({
       data: {
@@ -237,14 +342,15 @@ export async function POST(request: NextRequest) {
         published,
         publishedAt: published ? new Date() : null,
         authorId: user.id,
+        parentPostId: parentPostId || null,
         tags: {
-          connect: tagConnections,
+          connect: finalTagConnections,
         },
         categories: {
-          connect: categoryConnections,
+          connect: finalCategoryConnections,
         },
         subcategories: {
-          connect: subcategoryConnections,
+          connect: finalSubcategoryConnections,
         },
       },
       include: {

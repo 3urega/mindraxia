@@ -63,6 +63,7 @@ export default function ReferenceSelectorModal({
 }: ReferenceSelectorModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('equations');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterByPost, setFilterByPost] = useState<FilterType>('all');
   
   // Estados para cada tipo de contenido
@@ -73,10 +74,11 @@ export default function ReferenceSelectorModal({
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Cargar datos según el tab activo
+  // Cargar datos según el tab activo, filterByPost y debouncedSearchTerm
   useEffect(() => {
-    console.log('[ReferenceSelectorModal] useEffect activado:', { activeTab, postId });
+    console.log('[ReferenceSelectorModal] useEffect activado:', { activeTab, postId, filterByPost, debouncedSearchTerm });
     let cancelled = false;
     
     const loadData = async () => {
@@ -99,7 +101,7 @@ export default function ReferenceSelectorModal({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, postId]);
+  }, [activeTab, postId, filterByPost, debouncedSearchTerm]);
   
   // Capturar errores globales
   useEffect(() => {
@@ -142,8 +144,62 @@ export default function ReferenceSelectorModal({
     };
   }, []);
 
+  // Debounce para búsqueda: esperar 1 segundo después de que el usuario deje de escribir
+  useEffect(() => {
+    // Si filterByPost es 'current', actualizar inmediatamente
+    if (filterByPost === 'current') {
+      setDebouncedSearchTerm(searchTerm);
+      setIsSearching(false);
+      return;
+    }
+
+    // Si filterByPost es 'all' o 'others' y searchTerm tiene menos de 3 caracteres, limpiar
+    if (filterByPost === 'all' || filterByPost === 'others') {
+      if (searchTerm.length < 3) {
+        setDebouncedSearchTerm('');
+        setIsSearching(false);
+        return;
+      }
+
+      // Si tiene 3 o más caracteres, activar indicador de búsqueda y esperar 1 segundo
+      setIsSearching(true);
+      const timeoutId = setTimeout(() => {
+        setDebouncedSearchTerm(searchTerm);
+        setIsSearching(false);
+      }, 1000);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [searchTerm, filterByPost]);
+
   const loadDataForTab = async (tab: TabType) => {
-    console.log(`[ReferenceSelectorModal] loadDataForTab iniciado para tab: ${tab}`);
+    console.log(`[ReferenceSelectorModal] loadDataForTab iniciado para tab: ${tab}`, { filterByPost, debouncedSearchTerm });
+    
+    // Si filterByPost es 'all' o 'others' y no hay suficiente texto de búsqueda, limpiar y no cargar
+    if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
+      console.log('[ReferenceSelectorModal] No cargando datos: requiere mínimo 3 caracteres para búsqueda');
+      setLoading(false);
+      setError(null);
+      // Limpiar resultados
+      switch (tab) {
+        case 'equations':
+          setEquations([]);
+          break;
+        case 'images':
+          setImages([]);
+          break;
+        case 'definitions':
+          setDefinitions([]);
+          break;
+        case 'theorems':
+          setTheorems([]);
+          break;
+      }
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
@@ -182,15 +238,37 @@ export default function ReferenceSelectorModal({
 
   const loadEquations = async () => {
     let currentPostEquations: Equation[] = [];
-    if (postId) {
+    
+    // Si filterByPost es 'current', cargar siempre las ecuaciones del post actual
+    if (filterByPost === 'current' && postId) {
       try {
         const currentResponse = await fetch(`/api/posts/${postId}/equations`);
         if (currentResponse.ok) {
           const currentData = await currentResponse.json();
           currentPostEquations = currentData.equations || [];
         } else if (currentResponse.status === 401 || currentResponse.status === 403) {
-          // Error de autenticación, pero continuar con imágenes globales
           console.warn('No autorizado para ver ecuaciones del post actual');
+        }
+      } catch (err) {
+        console.error('Error fetching current post equations:', err);
+      }
+      setEquations(currentPostEquations);
+      return;
+    }
+
+    // Si filterByPost es 'all' o 'others', solo cargar si hay búsqueda válida
+    if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
+      setEquations([]);
+      return;
+    }
+
+    // Cargar ecuaciones del post actual si existe (para 'all')
+    if (postId && filterByPost === 'all') {
+      try {
+        const currentResponse = await fetch(`/api/posts/${postId}/equations`);
+        if (currentResponse.ok) {
+          const currentData = await currentResponse.json();
+          currentPostEquations = currentData.equations || [];
         }
       } catch (err) {
         console.error('Error fetching current post equations:', err);
@@ -198,7 +276,13 @@ export default function ReferenceSelectorModal({
     }
 
     try {
-      const allResponse = await fetch('/api/equations');
+      // Construir URL con parámetro de búsqueda si existe
+      let apiUrl = '/api/equations';
+      if (debouncedSearchTerm.length >= 3) {
+        apiUrl += `?search=${encodeURIComponent(debouncedSearchTerm)}`;
+      }
+
+      const allResponse = await fetch(apiUrl);
       if (!allResponse.ok) {
         if (allResponse.status === 401 || allResponse.status === 403) {
           // Si no está autorizado, usar solo ecuaciones del post actual
@@ -230,84 +314,74 @@ export default function ReferenceSelectorModal({
   };
 
   const loadImages = async () => {
-    console.log('[ReferenceSelectorModal] loadImages iniciado', { postId, currentPostSlug });
+    console.log('[ReferenceSelectorModal] loadImages iniciado', { postId, currentPostSlug, filterByPost, debouncedSearchTerm });
     let currentPostImages: Image[] = [];
-    if (postId) {
+    
+    // Si filterByPost es 'current', cargar siempre las imágenes del post actual
+    if (filterByPost === 'current' && postId) {
       try {
         console.log(`[ReferenceSelectorModal] Fetching imágenes del post actual: /api/posts/${postId}/images`);
         const currentPostResponse = await fetch(`/api/posts/${postId}/images`);
-        console.log(`[ReferenceSelectorModal] Respuesta del post actual:`, {
-          status: currentPostResponse.status,
-          statusText: currentPostResponse.statusText,
-          ok: currentPostResponse.ok,
-        });
         if (currentPostResponse.ok) {
           const currentPostData = await currentPostResponse.json();
-          console.log('[ReferenceSelectorModal] Datos del post actual recibidos:', {
-            imagesCount: currentPostData.images?.length || 0,
-            postSlug: currentPostData.postSlug,
-            images: currentPostData.images,
-          });
           currentPostImages = (currentPostData.images || [])
             .filter((img: Image) => img.anchorId !== null)
             .map((img: Image) => ({
               ...img,
               postSlug: currentPostData.postSlug || currentPostSlug || '',
             }));
-          console.log('[ReferenceSelectorModal] Imágenes del post actual procesadas:', currentPostImages.length);
-        } else {
-          const errorText = await currentPostResponse.text().catch(() => 'No se pudo leer el error');
-          console.error('[ReferenceSelectorModal] Error en respuesta del post actual:', {
-            status: currentPostResponse.status,
-            statusText: currentPostResponse.statusText,
-            errorText,
-          });
         }
       } catch (err) {
-        console.error('[ReferenceSelectorModal] Error fetching current post images:', {
-          error: err,
-          message: (err as any)?.message,
-          stack: (err as any)?.stack,
-        });
-        // No lanzar error, continuar con imágenes globales
+        console.error('[ReferenceSelectorModal] Error fetching current post images:', err);
+      }
+      setImages(currentPostImages);
+      return;
+    }
+
+    // Si filterByPost es 'all' o 'others', solo cargar si hay búsqueda válida
+    if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
+      setImages([]);
+      return;
+    }
+
+    // Cargar imágenes del post actual si existe (para 'all')
+    if (postId && filterByPost === 'all') {
+      try {
+        const currentPostResponse = await fetch(`/api/posts/${postId}/images`);
+        if (currentPostResponse.ok) {
+          const currentPostData = await currentPostResponse.json();
+          currentPostImages = (currentPostData.images || [])
+            .filter((img: Image) => img.anchorId !== null)
+            .map((img: Image) => ({
+              ...img,
+              postSlug: currentPostData.postSlug || currentPostSlug || '',
+            }));
+        }
+      } catch (err) {
+        console.error('[ReferenceSelectorModal] Error fetching current post images:', err);
       }
     }
 
     try {
-      console.log('[ReferenceSelectorModal] Fetching todas las imágenes: /api/images');
-      const allResponse = await fetch('/api/images');
-      console.log(`[ReferenceSelectorModal] Respuesta de todas las imágenes:`, {
-        status: allResponse.status,
-        statusText: allResponse.statusText,
-        ok: allResponse.ok,
-      });
+      // Construir URL con parámetro de búsqueda si existe
+      let apiUrl = '/api/images';
+      if (debouncedSearchTerm.length >= 3) {
+        apiUrl += `?search=${encodeURIComponent(debouncedSearchTerm)}`;
+      }
+
+      const allResponse = await fetch(apiUrl);
       if (!allResponse.ok) {
-        const errorText = await allResponse.text().catch(() => 'No se pudo leer el error');
-        console.error('[ReferenceSelectorModal] Error en respuesta de todas las imágenes:', {
-          status: allResponse.status,
-          statusText: allResponse.statusText,
-          errorText,
-        });
         if (allResponse.status === 401 || allResponse.status === 403) {
-          // Si no está autorizado, usar solo imágenes del post actual
-          console.log('[ReferenceSelectorModal] No autorizado, usando solo imágenes del post actual');
           setImages(currentPostImages);
           return;
         }
-        // Si falla, solo usar imágenes del post actual
-        console.log('[ReferenceSelectorModal] Error en fetch, usando solo imágenes del post actual');
         setImages(currentPostImages);
         return;
       }
 
       const allData = await allResponse.json();
-      console.log('[ReferenceSelectorModal] Todas las imágenes recibidas:', {
-        imagesCount: allData.images?.length || 0,
-        images: allData.images,
-      });
       const allImages: Image[] = (allData.images || [])
         .filter((img: Image) => img.anchorId !== null);
-      console.log('[ReferenceSelectorModal] Imágenes con anchorId:', allImages.length);
 
       const imagesMap = new Map<string, Image>();
       allImages.forEach((img) => {
@@ -319,100 +393,73 @@ export default function ReferenceSelectorModal({
         imagesMap.set(key, img);
       });
 
-      const finalImages = Array.from(imagesMap.values());
-      console.log('[ReferenceSelectorModal] Imágenes finales a mostrar:', finalImages.length);
-      setImages(finalImages);
-      console.log('[ReferenceSelectorModal] loadImages completado exitosamente');
+      setImages(Array.from(imagesMap.values()));
     } catch (err: any) {
-      console.error('[ReferenceSelectorModal] Error fetching all images:', {
-        error: err,
-        message: err?.message,
-        stack: err?.stack,
-        name: err?.name,
-      });
-      // Si falla, usar solo imágenes del post actual (si las hay)
+      console.error('[ReferenceSelectorModal] Error fetching all images:', err);
       if (currentPostImages.length > 0) {
-        console.log('[ReferenceSelectorModal] Usando solo imágenes del post actual debido al error');
         setImages(currentPostImages);
       } else {
-        // Si no hay imágenes del post actual, mostrar error pero no limpiar
-        console.error('[ReferenceSelectorModal] No hay imágenes disponibles, mostrando error');
         setError(`Error al cargar imágenes: ${err?.message || 'Error desconocido'}`);
       }
     }
   };
 
   const loadDefinitions = async () => {
-    console.log('[ReferenceSelectorModal] loadDefinitions iniciado', { postId });
+    console.log('[ReferenceSelectorModal] loadDefinitions iniciado', { postId, filterByPost, debouncedSearchTerm });
     let currentPostDefinitions: Definition[] = [];
-    if (postId) {
+    
+    // Si filterByPost es 'current', cargar siempre las definiciones del post actual
+    if (filterByPost === 'current' && postId) {
       try {
-        console.log(`[ReferenceSelectorModal] Fetching definiciones del post actual: /api/posts/${postId}/definitions`);
         const currentResponse = await fetch(`/api/posts/${postId}/definitions`);
-        console.log(`[ReferenceSelectorModal] Respuesta del post actual (definiciones):`, {
-          status: currentResponse.status,
-          statusText: currentResponse.statusText,
-          ok: currentResponse.ok,
-        });
         if (currentResponse.ok) {
           const currentData = await currentResponse.json();
-          console.log('[ReferenceSelectorModal] Definiciones del post actual recibidas:', {
-            definitionsCount: currentData.definitions?.length || 0,
-            definitions: currentData.definitions,
-          });
           currentPostDefinitions = currentData.definitions || [];
-        } else {
-          const errorText = await currentResponse.text().catch(() => 'No se pudo leer el error');
-          console.error('[ReferenceSelectorModal] Error en respuesta del post actual (definiciones):', {
-            status: currentResponse.status,
-            statusText: currentResponse.statusText,
-            errorText,
-          });
         }
       } catch (err) {
-        console.error('[ReferenceSelectorModal] Error fetching current post definitions:', {
-          error: err,
-          message: (err as any)?.message,
-          stack: (err as any)?.stack,
-        });
-        // No lanzar error, continuar
+        console.error('[ReferenceSelectorModal] Error fetching current post definitions:', err);
+      }
+      setDefinitions(currentPostDefinitions);
+      return;
+    }
+
+    // Si filterByPost es 'all' o 'others', solo cargar si hay búsqueda válida
+    if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
+      setDefinitions([]);
+      return;
+    }
+
+    // Cargar definiciones del post actual si existe (para 'all')
+    if (postId && filterByPost === 'all') {
+      try {
+        const currentResponse = await fetch(`/api/posts/${postId}/definitions`);
+        if (currentResponse.ok) {
+          const currentData = await currentResponse.json();
+          currentPostDefinitions = currentData.definitions || [];
+        }
+      } catch (err) {
+        console.error('[ReferenceSelectorModal] Error fetching current post definitions:', err);
       }
     }
 
     try {
-      console.log('[ReferenceSelectorModal] Fetching todas las definiciones: /api/definitions');
-      const allResponse = await fetch('/api/definitions');
-      console.log(`[ReferenceSelectorModal] Respuesta de todas las definiciones:`, {
-        status: allResponse.status,
-        statusText: allResponse.statusText,
-        ok: allResponse.ok,
-      });
+      // Construir URL con parámetro de búsqueda si existe
+      let apiUrl = '/api/definitions';
+      if (debouncedSearchTerm.length >= 3) {
+        apiUrl += `?search=${encodeURIComponent(debouncedSearchTerm)}`;
+      }
+
+      const allResponse = await fetch(apiUrl);
       if (!allResponse.ok) {
-        const errorData = await allResponse.json().catch(() => ({}));
-        const errorText = await allResponse.text().catch(() => 'No se pudo leer el error');
-        console.error('[ReferenceSelectorModal] Error en respuesta de todas las definiciones:', {
-          status: allResponse.status,
-          statusText: allResponse.statusText,
-          error: errorData,
-          errorText,
-        });
         if (allResponse.status === 401 || allResponse.status === 403) {
-          // Si no está autorizado, usar solo definiciones del post actual
-          console.log('[ReferenceSelectorModal] No autorizado, usando solo definiciones del post actual');
           setDefinitions(currentPostDefinitions);
           return;
         }
-        // Si falla, solo usar definiciones del post actual
-        console.log('[ReferenceSelectorModal] Error en fetch, usando solo definiciones del post actual');
         setDefinitions(currentPostDefinitions);
-        throw new Error(`Error ${allResponse.status}: ${errorData.message || allResponse.statusText}`);
+        throw new Error(`Error ${allResponse.status}: ${allResponse.statusText}`);
       }
 
       const allData = await allResponse.json();
-      console.log('[ReferenceSelectorModal] Todas las definiciones recibidas:', {
-        definitionsCount: allData.definitions?.length || 0,
-        definitions: allData.definitions,
-      });
       const allDefinitions: Definition[] = allData.definitions || [];
 
       const definitionsMap = new Map<string, Definition>();
@@ -425,96 +472,70 @@ export default function ReferenceSelectorModal({
         definitionsMap.set(key, def);
       });
 
-      const finalDefinitions = Array.from(definitionsMap.values());
-      console.log('[ReferenceSelectorModal] Definiciones finales a mostrar:', finalDefinitions.length);
-      setDefinitions(finalDefinitions);
-      console.log('[ReferenceSelectorModal] loadDefinitions completado exitosamente');
+      setDefinitions(Array.from(definitionsMap.values()));
     } catch (err: any) {
-      console.error('[ReferenceSelectorModal] Error fetching all definitions:', {
-        error: err,
-        message: err?.message,
-        stack: err?.stack,
-        name: err?.name,
-      });
-      // Si falla, usar solo definiciones del post actual
-      console.log('[ReferenceSelectorModal] Usando solo definiciones del post actual debido al error');
+      console.error('[ReferenceSelectorModal] Error fetching all definitions:', err);
       setDefinitions(currentPostDefinitions);
-      // Re-lanzar el error para que se muestre en el modal
       throw err;
     }
   };
 
   const loadTheorems = async () => {
-    console.log('[ReferenceSelectorModal] loadTheorems iniciado', { postId });
+    console.log('[ReferenceSelectorModal] loadTheorems iniciado', { postId, filterByPost, debouncedSearchTerm });
     let currentPostTheorems: Theorem[] = [];
-    if (postId) {
+    
+    // Si filterByPost es 'current', cargar siempre los teoremas del post actual
+    if (filterByPost === 'current' && postId) {
       try {
-        console.log(`[ReferenceSelectorModal] Fetching teoremas del post actual: /api/posts/${postId}/theorems`);
         const currentResponse = await fetch(`/api/posts/${postId}/theorems`);
-        console.log(`[ReferenceSelectorModal] Respuesta del post actual (teoremas):`, {
-          status: currentResponse.status,
-          statusText: currentResponse.statusText,
-          ok: currentResponse.ok,
-        });
         if (currentResponse.ok) {
           const currentData = await currentResponse.json();
-          console.log('[ReferenceSelectorModal] Teoremas del post actual recibidos:', {
-            theoremsCount: currentData.theorems?.length || 0,
-            theorems: currentData.theorems,
-          });
           currentPostTheorems = currentData.theorems || [];
-        } else {
-          const errorText = await currentResponse.text().catch(() => 'No se pudo leer el error');
-          console.error('[ReferenceSelectorModal] Error en respuesta del post actual (teoremas):', {
-            status: currentResponse.status,
-            statusText: currentResponse.statusText,
-            errorText,
-          });
         }
       } catch (err) {
-        console.error('[ReferenceSelectorModal] Error fetching current post theorems:', {
-          error: err,
-          message: (err as any)?.message,
-          stack: (err as any)?.stack,
-        });
-        // No lanzar error, continuar
+        console.error('[ReferenceSelectorModal] Error fetching current post theorems:', err);
+      }
+      setTheorems(currentPostTheorems);
+      return;
+    }
+
+    // Si filterByPost es 'all' o 'others', solo cargar si hay búsqueda válida
+    if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
+      setTheorems([]);
+      return;
+    }
+
+    // Cargar teoremas del post actual si existe (para 'all')
+    if (postId && filterByPost === 'all') {
+      try {
+        const currentResponse = await fetch(`/api/posts/${postId}/theorems`);
+        if (currentResponse.ok) {
+          const currentData = await currentResponse.json();
+          currentPostTheorems = currentData.theorems || [];
+        }
+      } catch (err) {
+        console.error('[ReferenceSelectorModal] Error fetching current post theorems:', err);
       }
     }
 
     try {
-      console.log('[ReferenceSelectorModal] Fetching todos los teoremas: /api/theorems');
-      const allResponse = await fetch('/api/theorems');
-      console.log(`[ReferenceSelectorModal] Respuesta de todos los teoremas:`, {
-        status: allResponse.status,
-        statusText: allResponse.statusText,
-        ok: allResponse.ok,
-      });
+      // Construir URL con parámetro de búsqueda si existe
+      let apiUrl = '/api/theorems';
+      if (debouncedSearchTerm.length >= 3) {
+        apiUrl += `?search=${encodeURIComponent(debouncedSearchTerm)}`;
+      }
+
+      const allResponse = await fetch(apiUrl);
       if (!allResponse.ok) {
-        const errorData = await allResponse.json().catch(() => ({}));
-        const errorText = await allResponse.text().catch(() => 'No se pudo leer el error');
-        console.error('[ReferenceSelectorModal] Error en respuesta de todos los teoremas:', {
-          status: allResponse.status,
-          statusText: allResponse.statusText,
-          error: errorData,
-          errorText,
-        });
         if (allResponse.status === 401 || allResponse.status === 403) {
-          // Si no está autorizado, usar solo teoremas del post actual
-          console.log('[ReferenceSelectorModal] No autorizado, usando solo teoremas del post actual');
           setTheorems(currentPostTheorems);
           return;
         }
-        // Si falla, solo usar teoremas del post actual
-        console.log('[ReferenceSelectorModal] Error en fetch, usando solo teoremas del post actual');
         setTheorems(currentPostTheorems);
-        throw new Error(`Error ${allResponse.status}: ${errorData.message || allResponse.statusText}`);
+        throw new Error(`Error ${allResponse.status}: ${allResponse.statusText}`);
       }
 
       const allData = await allResponse.json();
-      console.log('[ReferenceSelectorModal] Todos los teoremas recibidos:', {
-        theoremsCount: allData.theorems?.length || 0,
-        theorems: allData.theorems,
-      });
       const allTheorems: Theorem[] = allData.theorems || [];
 
       const theoremsMap = new Map<string, Theorem>();
@@ -527,21 +548,10 @@ export default function ReferenceSelectorModal({
         theoremsMap.set(key, thm);
       });
 
-      const finalTheorems = Array.from(theoremsMap.values());
-      console.log('[ReferenceSelectorModal] Teoremas finales a mostrar:', finalTheorems.length);
-      setTheorems(finalTheorems);
-      console.log('[ReferenceSelectorModal] loadTheorems completado exitosamente');
+      setTheorems(Array.from(theoremsMap.values()));
     } catch (err: any) {
-      console.error('[ReferenceSelectorModal] Error fetching all theorems:', {
-        error: err,
-        message: err?.message,
-        stack: err?.stack,
-        name: err?.name,
-      });
-      // Si falla, usar solo teoremas del post actual
-      console.log('[ReferenceSelectorModal] Usando solo teoremas del post actual debido al error');
+      console.error('[ReferenceSelectorModal] Error fetching all theorems:', err);
       setTheorems(currentPostTheorems);
-      // Re-lanzar el error para que se muestre en el modal
       throw err;
     }
   };
@@ -551,6 +561,11 @@ export default function ReferenceSelectorModal({
     data: T[],
     searchFields: (item: T) => string[]
   ): T[] => {
+    // Si filterByPost es 'all' o 'others' y searchTerm tiene menos de 3 caracteres, no mostrar nada
+    if ((filterByPost === 'all' || filterByPost === 'others') && searchTerm.length < 3) {
+      return [];
+    }
+
     return data.filter((item) => {
       // Filtrar por tipo de post
       if (filterByPost === 'current' && currentPostSlug && item.postSlug !== currentPostSlug) {
@@ -560,9 +575,9 @@ export default function ReferenceSelectorModal({
         return false;
       }
 
-      // Filtrar por búsqueda
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
+      // Filtrar por búsqueda usando debouncedSearchTerm
+      if (debouncedSearchTerm) {
+        const search = debouncedSearchTerm.toLowerCase();
         const searchableText = searchFields(item).join(' ').toLowerCase();
         return searchableText.includes(search);
       }
@@ -674,6 +689,28 @@ export default function ReferenceSelectorModal({
 
       console.log('[ReferenceSelectorModal] Renderizando contenido para tab:', activeTab);
       
+      // Mostrar mensaje si se requiere mínimo 3 caracteres
+      if ((filterByPost === 'all' || filterByPost === 'others') && searchTerm.length < 3) {
+        return (
+          <div className="text-center py-12 text-text-muted">
+            <div className="text-text-secondary mb-2">Introduce al menos 3 caracteres para buscar</div>
+            {isSearching && (
+              <div className="text-xs text-text-muted">Buscando...</div>
+            )}
+          </div>
+        );
+      }
+
+      // Mostrar indicador de búsqueda durante el debounce
+      if (isSearching) {
+        return (
+          <div className="text-center py-12 text-text-muted">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-star-cyan mx-auto mb-4"></div>
+            Buscando...
+          </div>
+        );
+      }
+
       switch (activeTab) {
         case 'equations':
         if (filteredEquations.length === 0) {
@@ -737,7 +774,7 @@ export default function ReferenceSelectorModal({
         if (filteredImages.length === 0) {
           return (
             <div className="text-center py-12 text-text-muted">
-              {searchTerm ? 'No se encontraron imágenes' : 'No hay imágenes disponibles'}
+              {searchTerm && searchTerm.length >= 3 ? 'No se encontraron imágenes' : 'No hay imágenes disponibles'}
             </div>
           );
         }
@@ -816,7 +853,7 @@ export default function ReferenceSelectorModal({
         if (filteredDefinitions.length === 0) {
           return (
             <div className="text-center py-12 text-text-muted">
-              {searchTerm ? 'No se encontraron definiciones' : 'No hay definiciones disponibles'}
+              {searchTerm && searchTerm.length >= 3 ? 'No se encontraron definiciones' : 'No hay definiciones disponibles'}
             </div>
           );
         }
@@ -943,7 +980,7 @@ export default function ReferenceSelectorModal({
         if (filteredTheorems.length === 0) {
           return (
             <div className="text-center py-12 text-text-muted">
-              {searchTerm ? 'No se encontraron teoremas' : 'No hay teoremas disponibles'}
+              {searchTerm && searchTerm.length >= 3 ? 'No se encontraron teoremas' : 'No hay teoremas disponibles'}
             </div>
           );
         }
@@ -1096,6 +1133,7 @@ export default function ReferenceSelectorModal({
                 onClick={() => {
                   setActiveTab(tab.id);
                   setSearchTerm(''); // Limpiar búsqueda al cambiar tab
+                  setDebouncedSearchTerm(''); // Limpiar también el término con debounce
                 }}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition-all relative ${
                   activeTab === tab.id
