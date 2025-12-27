@@ -194,7 +194,8 @@ export default function MarkdownRenderer({
                 let match;
                 
                 // Regex combinado para referencias de ecuaciones, imágenes, definiciones y teoremas
-                const refRegex = /\{\{(eq|img|def|thm):([^}|]+)\|([^}]+)\}\}/g;
+                // Captura el tercer parámetro opcional (embed)
+                const refRegex = /\{\{(eq|img|def|thm):([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
                 
                 while ((match = refRegex.exec(children)) !== null) {
                   // Añadir texto antes de la referencia
@@ -203,10 +204,11 @@ export default function MarkdownRenderer({
                   }
                   
                   // Procesar la referencia
-                  const [, refType, path, linkText] = match;
+                  const [, refType, path, linkText, flag] = match;
                   const pathParts = path.split('/');
                   const anchorId = pathParts.length === 2 ? pathParts[1].trim() : pathParts[0].trim();
                   const postSlug = pathParts.length === 2 ? pathParts[0].trim() : undefined;
+                  const embed = flag?.trim().toLowerCase() === 'embed';
                   
                   if (refType === 'eq') {
                     parts.push(
@@ -216,6 +218,7 @@ export default function MarkdownRenderer({
                         postSlug={postSlug}
                         linkText={linkText.trim()}
                         currentSlug={currentSlug}
+                        embed={embed}
                       />
                     );
                   } else if (refType === 'img') {
@@ -226,6 +229,7 @@ export default function MarkdownRenderer({
                         postSlug={postSlug}
                         linkText={linkText.trim()}
                         currentSlug={currentSlug}
+                        embed={embed}
                       />
                     );
                   } else if (refType === 'def') {
@@ -236,6 +240,7 @@ export default function MarkdownRenderer({
                         postSlug={postSlug}
                         linkText={linkText.trim()}
                         currentSlug={currentSlug}
+                        embed={embed}
                       />
                     );
                   } else if (refType === 'thm') {
@@ -246,6 +251,7 @@ export default function MarkdownRenderer({
                         postSlug={postSlug}
                         linkText={linkText.trim()}
                         currentSlug={currentSlug}
+                        embed={embed}
                       />
                     );
                   }

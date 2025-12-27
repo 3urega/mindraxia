@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
 
 type TabType = 'equations' | 'images' | 'definitions' | 'theorems';
-type FilterType = 'all' | 'current' | 'others';
+type FilterType = 'all' | 'current' | 'others' | 'parent';
 
 interface Equation {
   anchorId: string;
@@ -45,10 +45,10 @@ interface Theorem {
 interface ReferenceSelectorModalProps {
   postId?: string;
   currentPostSlug?: string;
-  onSelectEquation: (anchorId: string, postSlug: string) => void;
-  onSelectImage: (anchorId: string, postSlug: string) => void;
-  onSelectDefinition: (anchorId: string, postSlug: string) => void;
-  onSelectTheorem: (anchorId: string, postSlug: string) => void;
+  onSelectEquation: (anchorId: string, postSlug: string, embed?: boolean) => void;
+  onSelectImage: (anchorId: string, postSlug: string, embed?: boolean) => void;
+  onSelectDefinition: (anchorId: string, postSlug: string, embed?: boolean) => void;
+  onSelectTheorem: (anchorId: string, postSlug: string, embed?: boolean) => void;
   onClose: () => void;
 }
 
@@ -65,6 +65,7 @@ export default function ReferenceSelectorModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterByPost, setFilterByPost] = useState<FilterType>('all');
+  const [embedContent, setEmbedContent] = useState(false);
   
   // Estados para cada tipo de contenido
   const [equations, setEquations] = useState<Equation[]>([]);
@@ -75,6 +76,7 @@ export default function ReferenceSelectorModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [parentPostSlug, setParentPostSlug] = useState<string | null>(null);
 
   // Cargar datos según el tab activo, filterByPost y debouncedSearchTerm
   useEffect(() => {
@@ -101,7 +103,7 @@ export default function ReferenceSelectorModal({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, postId, filterByPost, debouncedSearchTerm]);
+  }, [activeTab, postId, filterByPost, debouncedSearchTerm, parentPostSlug]);
   
   // Capturar errores globales
   useEffect(() => {
@@ -144,10 +146,37 @@ export default function ReferenceSelectorModal({
     };
   }, []);
 
+  // Cargar información del post padre si existe
+  useEffect(() => {
+    if (postId) {
+      fetch(`/api/posts/${postId}`)
+        .then((res) => {
+          if (res.ok) {
+            return res.json();
+          }
+          return null;
+        })
+        .then((data) => {
+          // La API devuelve directamente el objeto serializado, no envuelto en { post: ... }
+          if (data?.parentPost?.slug) {
+            setParentPostSlug(data.parentPost.slug);
+          } else {
+            setParentPostSlug(null);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching parent post info:', err);
+          setParentPostSlug(null);
+        });
+    } else {
+      setParentPostSlug(null);
+    }
+  }, [postId]);
+
   // Debounce para búsqueda: esperar 1 segundo después de que el usuario deje de escribir
   useEffect(() => {
-    // Si filterByPost es 'current', actualizar inmediatamente
-    if (filterByPost === 'current') {
+    // Si filterByPost es 'current' o 'parent', actualizar inmediatamente
+    if (filterByPost === 'current' || filterByPost === 'parent') {
       setDebouncedSearchTerm(searchTerm);
       setIsSearching(false);
       return;
@@ -256,6 +285,33 @@ export default function ReferenceSelectorModal({
       return;
     }
 
+    // Si filterByPost es 'parent', cargar las ecuaciones del post padre
+    if (filterByPost === 'parent' && parentPostSlug && postId) {
+      try {
+        // Obtener el post actual para acceder al parentPost
+        const currentPostResponse = await fetch(`/api/posts/${postId}`);
+        if (currentPostResponse.ok) {
+          const currentPostData = await currentPostResponse.json();
+          // La API devuelve directamente el objeto serializado
+          const parentPostId = currentPostData.parentPost?.id;
+          if (parentPostId) {
+            const parentEquationsResponse = await fetch(`/api/posts/${parentPostId}/equations`);
+            if (parentEquationsResponse.ok) {
+              const parentEquationsData = await parentEquationsResponse.json();
+              currentPostEquations = (parentEquationsData.equations || []).map((eq: Equation) => ({
+                ...eq,
+                postSlug: parentPostSlug,
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching parent post equations:', err);
+      }
+      setEquations(currentPostEquations);
+      return;
+    }
+
     // Si filterByPost es 'all' o 'others', solo cargar si hay búsqueda válida
     if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
       setEquations([]);
@@ -333,6 +389,34 @@ export default function ReferenceSelectorModal({
         }
       } catch (err) {
         console.error('[ReferenceSelectorModal] Error fetching current post images:', err);
+      }
+      setImages(currentPostImages);
+      return;
+    }
+
+    // Si filterByPost es 'parent', cargar las imágenes del post padre
+    if (filterByPost === 'parent' && parentPostSlug && postId) {
+      try {
+        const currentPostResponse = await fetch(`/api/posts/${postId}`);
+        if (currentPostResponse.ok) {
+          const currentPostData = await currentPostResponse.json();
+          // La API devuelve directamente el objeto serializado
+          const parentPostId = currentPostData.parentPost?.id;
+          if (parentPostId) {
+            const parentImagesResponse = await fetch(`/api/posts/${parentPostId}/images`);
+            if (parentImagesResponse.ok) {
+              const parentImagesData = await parentImagesResponse.json();
+              currentPostImages = (parentImagesData.images || [])
+                .filter((img: Image) => img.anchorId !== null)
+                .map((img: Image) => ({
+                  ...img,
+                  postSlug: parentPostSlug,
+                }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[ReferenceSelectorModal] Error fetching parent post images:', err);
       }
       setImages(currentPostImages);
       return;
@@ -423,6 +507,32 @@ export default function ReferenceSelectorModal({
       return;
     }
 
+    // Si filterByPost es 'parent', cargar las definiciones del post padre
+    if (filterByPost === 'parent' && parentPostSlug && postId) {
+      try {
+        const currentPostResponse = await fetch(`/api/posts/${postId}`);
+        if (currentPostResponse.ok) {
+          const currentPostData = await currentPostResponse.json();
+          // La API devuelve directamente el objeto serializado
+          const parentPostId = currentPostData.parentPost?.id;
+          if (parentPostId) {
+            const parentDefinitionsResponse = await fetch(`/api/posts/${parentPostId}/definitions`);
+            if (parentDefinitionsResponse.ok) {
+              const parentDefinitionsData = await parentDefinitionsResponse.json();
+              currentPostDefinitions = (parentDefinitionsData.definitions || []).map((def: Definition) => ({
+                ...def,
+                postSlug: parentPostSlug,
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[ReferenceSelectorModal] Error fetching parent post definitions:', err);
+      }
+      setDefinitions(currentPostDefinitions);
+      return;
+    }
+
     // Si filterByPost es 'all' o 'others', solo cargar si hay búsqueda válida
     if ((filterByPost === 'all' || filterByPost === 'others') && debouncedSearchTerm.length < 3) {
       setDefinitions([]);
@@ -494,6 +604,32 @@ export default function ReferenceSelectorModal({
         }
       } catch (err) {
         console.error('[ReferenceSelectorModal] Error fetching current post theorems:', err);
+      }
+      setTheorems(currentPostTheorems);
+      return;
+    }
+
+    // Si filterByPost es 'parent', cargar los teoremas del post padre
+    if (filterByPost === 'parent' && parentPostSlug && postId) {
+      try {
+        const currentPostResponse = await fetch(`/api/posts/${postId}`);
+        if (currentPostResponse.ok) {
+          const currentPostData = await currentPostResponse.json();
+          // La API devuelve directamente el objeto serializado
+          const parentPostId = currentPostData.parentPost?.id;
+          if (parentPostId) {
+            const parentTheoremsResponse = await fetch(`/api/posts/${parentPostId}/theorems`);
+            if (parentTheoremsResponse.ok) {
+              const parentTheoremsData = await parentTheoremsResponse.json();
+              currentPostTheorems = (parentTheoremsData.theorems || []).map((thm: Theorem) => ({
+                ...thm,
+                postSlug: parentPostSlug,
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[ReferenceSelectorModal] Error fetching parent post theorems:', err);
       }
       setTheorems(currentPostTheorems);
       return;
@@ -574,6 +710,9 @@ export default function ReferenceSelectorModal({
       if (filterByPost === 'others' && currentPostSlug && item.postSlug === currentPostSlug) {
         return false;
       }
+      if (filterByPost === 'parent' && parentPostSlug && item.postSlug !== parentPostSlug) {
+        return false;
+      }
 
       // Filtrar por búsqueda usando debouncedSearchTerm
       if (debouncedSearchTerm) {
@@ -619,24 +758,24 @@ export default function ReferenceSelectorModal({
   ]);
 
   const handleSelect = (anchorId: string, postSlug: string) => {
-    console.log('[ReferenceSelectorModal] handleSelect llamado:', { activeTab, anchorId, postSlug });
+    console.log('[ReferenceSelectorModal] handleSelect llamado:', { activeTab, anchorId, postSlug, embedContent });
     try {
       switch (activeTab) {
         case 'equations':
           console.log('[ReferenceSelectorModal] Llamando onSelectEquation');
-          onSelectEquation(anchorId, postSlug);
+          onSelectEquation(anchorId, postSlug, embedContent);
           break;
         case 'images':
           console.log('[ReferenceSelectorModal] Llamando onSelectImage');
-          onSelectImage(anchorId, postSlug);
+          onSelectImage(anchorId, postSlug, embedContent);
           break;
         case 'definitions':
           console.log('[ReferenceSelectorModal] Llamando onSelectDefinition');
-          onSelectDefinition(anchorId, postSlug);
+          onSelectDefinition(anchorId, postSlug, embedContent);
           break;
         case 'theorems':
           console.log('[ReferenceSelectorModal] Llamando onSelectTheorem');
-          onSelectTheorem(anchorId, postSlug);
+          onSelectTheorem(anchorId, postSlug, embedContent);
           break;
       }
       console.log('[ReferenceSelectorModal] Cerrando modal');
@@ -690,7 +829,7 @@ export default function ReferenceSelectorModal({
       console.log('[ReferenceSelectorModal] Renderizando contenido para tab:', activeTab);
       
       // Mostrar mensaje si se requiere mínimo 3 caracteres
-      if ((filterByPost === 'all' || filterByPost === 'others') && searchTerm.length < 3) {
+      if ((filterByPost === 'all' || filterByPost === 'others') && searchTerm.length < 3 && searchTerm.length > 0) {
         return (
           <div className="text-center py-12 text-text-muted">
             <div className="text-text-secondary mb-2">Introduce al menos 3 caracteres para buscar</div>
@@ -1165,9 +1304,26 @@ export default function ReferenceSelectorModal({
             autoFocus
           />
           
+          {/* Opción para incrustar contenido */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={embedContent}
+              onChange={(e) => setEmbedContent(e.target.checked)}
+              className="w-4 h-4 rounded border focus:ring-2 focus:ring-star-cyan/20"
+              style={{ 
+                borderColor: embedContent ? 'var(--star-cyan)' : 'var(--border-glow)',
+                backgroundColor: embedContent ? 'var(--star-cyan)' : 'transparent'
+              }}
+            />
+            <span className="text-sm text-text-secondary">
+              Incrustar contenido completo (mostrar ecuación/definición/teorema/imagen en lugar de solo enlace)
+            </span>
+          </label>
+          
           {/* Filtros por tipo de post */}
           {currentPostSlug && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setFilterByPost('all')}
@@ -1190,6 +1346,19 @@ export default function ReferenceSelectorModal({
               >
                 📄 Este Post
               </button>
+              {parentPostSlug && (
+                <button
+                  type="button"
+                  onClick={() => setFilterByPost('parent')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-all ${
+                    filterByPost === 'parent'
+                      ? 'bg-star-cyan/20 border-star-cyan text-star-cyan shadow-lg'
+                      : 'border-transparent text-text-muted hover:text-text-secondary hover:bg-space-secondary'
+                  }`}
+                >
+                  👆 Post Padre
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setFilterByPost('others')}

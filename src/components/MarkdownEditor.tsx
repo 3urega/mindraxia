@@ -732,16 +732,17 @@ export default function MarkdownEditor({
   };
 
   // Insertar referencia a imagen
-  const handleInsertImageReference = (anchorId: string, postSlug: string) => {
-    console.log('[MarkdownEditor] handleInsertImageReference llamado:', { anchorId, postSlug, currentPostSlug });
+  const handleInsertImageReference = (anchorId: string, postSlug: string, embed?: boolean) => {
+    console.log('[MarkdownEditor] handleInsertImageReference llamado:', { anchorId, postSlug, currentPostSlug, embed });
     try {
       let referenceText: string;
+      const embedFlag = embed ? '|embed' : '';
       if (currentPostSlug === postSlug || !currentPostSlug) {
-        // Referencia al mismo post: {{img:anchor-id|texto}}
-        referenceText = `{{img:${anchorId}|texto del enlace}}`;
+        // Referencia al mismo post: {{img:anchor-id|texto}} o {{img:anchor-id|texto|embed}}
+        referenceText = `{{img:${anchorId}|texto del enlace${embedFlag}}}`;
       } else {
-        // Referencia a otro post: {{img:post-slug/anchor-id|texto}}
-        referenceText = `{{img:${postSlug}/${anchorId}|texto del enlace}}`;
+        // Referencia a otro post: {{img:post-slug/anchor-id|texto}} o {{img:post-slug/anchor-id|texto|embed}}
+        referenceText = `{{img:${postSlug}/${anchorId}|texto del enlace${embedFlag}}}`;
       }
 
       console.log('[MarkdownEditor] Insertando referencia de imagen:', referenceText);
@@ -753,10 +754,14 @@ export default function MarkdownEditor({
         if (textarea) {
           const currentPos = textarea.selectionStart;
           const startPos = currentPos - referenceText.length;
-          // Posición después de |
-          const pipePos = referenceText.indexOf('|') + 1;
-          const endPos = startPos + referenceText.length - 2; // Antes de }}
-          textarea.setSelectionRange(startPos + pipePos, endPos);
+          // Posición después del primer |
+          const firstPipePos = referenceText.indexOf('|') + 1;
+          // Si tiene embed, encontrar el segundo | (antes de embed)
+          // Si no tiene embed, usar el final antes de }}
+          const endPos = embed 
+            ? startPos + referenceText.lastIndexOf('|') // Segundo | (antes de embed)
+            : startPos + referenceText.length - 2; // Antes de }}
+          textarea.setSelectionRange(startPos + firstPipePos, endPos);
         }
       }, 10);
     } catch (err) {
@@ -765,18 +770,19 @@ export default function MarkdownEditor({
   };
 
   // Insertar referencia a ecuación
-  const handleInsertReference = (anchorId: string, postSlug: string) => {
+  const handleInsertReference = (anchorId: string, postSlug: string, embed?: boolean) => {
     // Determinar si es referencia al mismo post o a otro
     // Por ahora asumimos que si no hay postId, es referencia al mismo post
     const isSamePost = !postId; // Si no hay postId, es nuevo post, así que misma referencia
     
     let referenceText: string;
+    const embedFlag = embed ? '|embed' : '';
     if (isSamePost) {
-      // Referencia al mismo post: {{eq:anchor-id|texto}}
-      referenceText = `{{eq:${anchorId}|texto del enlace}}`;
+      // Referencia al mismo post: {{eq:anchor-id|texto}} o {{eq:anchor-id|texto|embed}}
+      referenceText = `{{eq:${anchorId}|texto del enlace${embedFlag}}}`;
     } else {
-      // Referencia a otro post: {{eq:post-slug/anchor-id|texto}}
-      referenceText = `{{eq:${postSlug}/${anchorId}|texto del enlace}}`;
+      // Referencia a otro post: {{eq:post-slug/anchor-id|texto}} o {{eq:post-slug/anchor-id|texto|embed}}
+      referenceText = `{{eq:${postSlug}/${anchorId}|texto del enlace${embedFlag}}}`;
     }
     
     insertText(referenceText);
@@ -787,23 +793,28 @@ export default function MarkdownEditor({
       if (textarea) {
         const currentPos = textarea.selectionStart;
         const startPos = currentPos - referenceText.length;
-        // Posición después de |
-        const pipePos = referenceText.indexOf('|') + 1;
-        const endPos = startPos + referenceText.length - 2; // Antes de }}
-        textarea.setSelectionRange(startPos + pipePos, endPos);
+        // Posición después del primer |
+        const firstPipePos = referenceText.indexOf('|') + 1;
+        // Si tiene embed, encontrar el segundo | (antes de embed)
+        // Si no tiene embed, usar el final antes de }}
+        const endPos = embed 
+          ? startPos + referenceText.lastIndexOf('|') // Segundo | (antes de embed)
+          : startPos + referenceText.length - 2; // Antes de }}
+        textarea.setSelectionRange(startPos + firstPipePos, endPos);
       }
     }, 10);
   };
 
   // Insertar referencia a definición
-  const handleInsertDefinitionReference = (anchorId: string, postSlug: string) => {
+  const handleInsertDefinitionReference = (anchorId: string, postSlug: string, embed?: boolean) => {
     const isSamePost = !postId || currentPostSlug === postSlug;
     
     let referenceText: string;
+    const embedFlag = embed ? '|embed' : '';
     if (isSamePost) {
-      referenceText = `{{def:${anchorId}|texto del enlace}}`;
+      referenceText = `{{def:${anchorId}|texto del enlace${embedFlag}}}`;
     } else {
-      referenceText = `{{def:${postSlug}/${anchorId}|texto del enlace}}`;
+      referenceText = `{{def:${postSlug}/${anchorId}|texto del enlace${embedFlag}}}`;
     }
     
     insertText(referenceText);
@@ -813,22 +824,28 @@ export default function MarkdownEditor({
       if (textarea) {
         const currentPos = textarea.selectionStart;
         const startPos = currentPos - referenceText.length;
-        const pipePos = referenceText.indexOf('|') + 1;
-        const endPos = startPos + referenceText.length - 2;
-        textarea.setSelectionRange(startPos + pipePos, endPos);
+        // Posición después del primer |
+        const firstPipePos = referenceText.indexOf('|') + 1;
+        // Si tiene embed, encontrar el segundo | (antes de embed)
+        // Si no tiene embed, usar el final antes de }}
+        const endPos = embed 
+          ? startPos + referenceText.lastIndexOf('|') // Segundo | (antes de embed)
+          : startPos + referenceText.length - 2; // Antes de }}
+        textarea.setSelectionRange(startPos + firstPipePos, endPos);
       }
     }, 10);
   };
 
   // Insertar referencia a teorema
-  const handleInsertTheoremReference = (anchorId: string, postSlug: string) => {
+  const handleInsertTheoremReference = (anchorId: string, postSlug: string, embed?: boolean) => {
     const isSamePost = !postId || currentPostSlug === postSlug;
     
     let referenceText: string;
+    const embedFlag = embed ? '|embed' : '';
     if (isSamePost) {
-      referenceText = `{{thm:${anchorId}|texto del enlace}}`;
+      referenceText = `{{thm:${anchorId}|texto del enlace${embedFlag}}}`;
     } else {
-      referenceText = `{{thm:${postSlug}/${anchorId}|texto del enlace}}`;
+      referenceText = `{{thm:${postSlug}/${anchorId}|texto del enlace${embedFlag}}}`;
     }
     
     insertText(referenceText);
@@ -838,9 +855,14 @@ export default function MarkdownEditor({
       if (textarea) {
         const currentPos = textarea.selectionStart;
         const startPos = currentPos - referenceText.length;
-        const pipePos = referenceText.indexOf('|') + 1;
-        const endPos = startPos + referenceText.length - 2;
-        textarea.setSelectionRange(startPos + pipePos, endPos);
+        // Posición después del primer |
+        const firstPipePos = referenceText.indexOf('|') + 1;
+        // Si tiene embed, encontrar el segundo | (antes de embed)
+        // Si no tiene embed, usar el final antes de }}
+        const endPos = embed 
+          ? startPos + referenceText.lastIndexOf('|') // Segundo | (antes de embed)
+          : startPos + referenceText.length - 2; // Antes de }}
+        textarea.setSelectionRange(startPos + firstPipePos, endPos);
       }
     }, 10);
   };

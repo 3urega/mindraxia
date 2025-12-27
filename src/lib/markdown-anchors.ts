@@ -13,6 +13,7 @@ export interface EquationReference {
   postSlug?: string; // Si no existe, es referencia al mismo post
   anchorId: string;
   linkText: string;
+  embed?: boolean; // Si es true, mostrar contenido completo en lugar de solo enlace
   fullMatch: string;
 }
 
@@ -47,32 +48,36 @@ export function extractAnchors(content: string): EquationAnchor[] {
 
 /**
  * Extrae todas las referencias a ecuaciones del markdown
- * Sintaxis: {{eq:post-slug/anchor-id|texto}} o {{eq:anchor-id|texto}}
+ * Sintaxis: {{eq:post-slug/anchor-id|texto|embed}} o {{eq:anchor-id|texto}}
  */
 export function extractReferences(content: string): EquationReference[] {
   const references: EquationReference[] = [];
   
-  // Regex para detectar: {{eq:slug/anchor|texto}} o {{eq:anchor|texto}}
-  const referenceRegex = /\{\{eq:([^}|]+)\|([^}]+)\}\}/g;
+  // Regex para detectar: {{eq:slug/anchor|texto|embed}} o {{eq:anchor|texto}}
+  // El tercer parámetro es opcional y puede ser "embed" o cualquier otro flag
+  const referenceRegex = /\{\{eq:([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
   
   let match;
   while ((match = referenceRegex.exec(content)) !== null) {
-    const [, path, linkText] = match;
+    const [, path, linkText, flag] = match;
     const parts = path.split('/');
+    const embed = flag?.trim().toLowerCase() === 'embed';
     
     if (parts.length === 2) {
-      // Referencia a otro post: {{eq:post-slug/anchor-id|texto}}
+      // Referencia a otro post: {{eq:post-slug/anchor-id|texto|embed}}
       references.push({
         postSlug: parts[0].trim(),
         anchorId: parts[1].trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     } else {
-      // Referencia al mismo post: {{eq:anchor-id|texto}}
+      // Referencia al mismo post: {{eq:anchor-id|texto|embed}}
       references.push({
         anchorId: path.trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     }

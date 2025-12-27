@@ -13,6 +13,7 @@ export interface TheoremReference {
   postSlug?: string; // Si no existe, es referencia al mismo post
   anchorId: string;
   linkText: string;
+  embed?: boolean; // Si es true, mostrar contenido completo en lugar de solo enlace
   fullMatch: string;
 }
 
@@ -48,32 +49,35 @@ export function extractTheoremAnchors(content: string): TheoremAnchor[] {
 
 /**
  * Extrae todas las referencias a teoremas del markdown
- * Sintaxis: {{thm:post-slug/anchor-id|texto}} o {{thm:anchor-id|texto}}
+ * Sintaxis: {{thm:post-slug/anchor-id|texto|embed}} o {{thm:anchor-id|texto}}
  */
 export function extractTheoremReferences(content: string): TheoremReference[] {
   const references: TheoremReference[] = [];
   
-  // Regex para detectar: {{thm:slug/anchor|texto}} o {{thm:anchor|texto}}
-  const referenceRegex = /\{\{thm:([^}|]+)\|([^}]+)\}\}/g;
+  // Regex para detectar: {{thm:slug/anchor|texto|embed}} o {{thm:anchor|texto}}
+  const referenceRegex = /\{\{thm:([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
   
   let match;
   while ((match = referenceRegex.exec(content)) !== null) {
-    const [, path, linkText] = match;
+    const [, path, linkText, flag] = match;
     const parts = path.split('/');
+    const embed = flag?.trim().toLowerCase() === 'embed';
     
     if (parts.length === 2) {
-      // Referencia a otro post: {{thm:post-slug/anchor-id|texto}}
+      // Referencia a otro post: {{thm:post-slug/anchor-id|texto|embed}}
       references.push({
         postSlug: parts[0].trim(),
         anchorId: parts[1].trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     } else {
-      // Referencia al mismo post: {{thm:anchor-id|texto}}
+      // Referencia al mismo post: {{thm:anchor-id|texto|embed}}
       references.push({
         anchorId: path.trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     }

@@ -14,6 +14,7 @@ export interface ImageReference {
   postSlug?: string; // Si no existe, es referencia al mismo post
   anchorId: string;
   linkText: string;
+  embed?: boolean; // Si es true, mostrar contenido completo en lugar de solo enlace
   fullMatch: string;
 }
 
@@ -46,32 +47,35 @@ export function extractImageAnchors(content: string): ImageAnchor[] {
 
 /**
  * Extrae todas las referencias a imágenes del markdown
- * Sintaxis: {{img:post-slug/anchor-id|texto}} o {{img:anchor-id|texto}}
+ * Sintaxis: {{img:post-slug/anchor-id|texto|embed}} o {{img:anchor-id|texto}}
  */
 export function extractImageReferences(content: string): ImageReference[] {
   const references: ImageReference[] = [];
   
-  // Regex para detectar: {{img:slug/anchor|texto}} o {{img:anchor|texto}}
-  const referenceRegex = /\{\{img:([^}|]+)\|([^}]+)\}\}/g;
+  // Regex para detectar: {{img:slug/anchor|texto|embed}} o {{img:anchor|texto}}
+  const referenceRegex = /\{\{img:([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
   
   let match;
   while ((match = referenceRegex.exec(content)) !== null) {
-    const [, path, linkText] = match;
+    const [, path, linkText, flag] = match;
     const parts = path.split('/');
+    const embed = flag?.trim().toLowerCase() === 'embed';
     
     if (parts.length === 2) {
-      // Referencia a otro post: {{img:post-slug/anchor-id|texto}}
+      // Referencia a otro post: {{img:post-slug/anchor-id|texto|embed}}
       references.push({
         postSlug: parts[0].trim(),
         anchorId: parts[1].trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     } else {
-      // Referencia al mismo post: {{img:anchor-id|texto}}
+      // Referencia al mismo post: {{img:anchor-id|texto|embed}}
       references.push({
         anchorId: path.trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     }

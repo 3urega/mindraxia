@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -468,9 +468,9 @@ export default function AdminPostsPage() {
                   const isExpanded = expandedPosts.has(post.id);
                   
                   return (
-                    <>
+                    <Fragment key={post.id}>
                       {/* Post padre */}
-                      <tr key={post.id} className="hover:bg-space-primary/30 transition-colors">
+                      <tr className="hover:bg-space-primary/30 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-start gap-2">
                             {hasAssociatedPosts && (
@@ -578,7 +578,7 @@ export default function AdminPostsPage() {
                       if (!fullAssociatedPost) return null;
                       
                       return (
-                        <tr key={fullAssociatedPost.id} className="hover:bg-space-primary/30 transition-colors bg-space-primary/10">
+                        <tr key={`associated-${fullAssociatedPost.id}`} className="hover:bg-space-primary/30 transition-colors bg-space-primary/10">
                           <td className="px-6 py-4">
                             <div className="pl-6 border-l-2" style={{ borderColor: 'var(--nebula-purple)' }}>
                               <span className="text-xs text-nebula-purple font-medium mb-1 block">↳ Post asociado</span>
@@ -669,7 +669,7 @@ export default function AdminPostsPage() {
                         </tr>
                       );
                     })}
-                    </>
+                  </Fragment>
                   );
                 })}
               </tbody>

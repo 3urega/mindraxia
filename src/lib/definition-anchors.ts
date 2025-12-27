@@ -13,6 +13,7 @@ export interface DefinitionReference {
   postSlug?: string; // Si no existe, es referencia al mismo post
   anchorId: string;
   linkText: string;
+  embed?: boolean; // Si es true, mostrar contenido completo en lugar de solo enlace
   fullMatch: string;
 }
 
@@ -48,32 +49,35 @@ export function extractDefinitionAnchors(content: string): DefinitionAnchor[] {
 
 /**
  * Extrae todas las referencias a definiciones del markdown
- * Sintaxis: {{def:post-slug/anchor-id|texto}} o {{def:anchor-id|texto}}
+ * Sintaxis: {{def:post-slug/anchor-id|texto|embed}} o {{def:anchor-id|texto}}
  */
 export function extractDefinitionReferences(content: string): DefinitionReference[] {
   const references: DefinitionReference[] = [];
   
-  // Regex para detectar: {{def:slug/anchor|texto}} o {{def:anchor|texto}}
-  const referenceRegex = /\{\{def:([^}|]+)\|([^}]+)\}\}/g;
+  // Regex para detectar: {{def:slug/anchor|texto|embed}} o {{def:anchor|texto}}
+  const referenceRegex = /\{\{def:([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
   
   let match;
   while ((match = referenceRegex.exec(content)) !== null) {
-    const [, path, linkText] = match;
+    const [, path, linkText, flag] = match;
     const parts = path.split('/');
+    const embed = flag?.trim().toLowerCase() === 'embed';
     
     if (parts.length === 2) {
-      // Referencia a otro post: {{def:post-slug/anchor-id|texto}}
+      // Referencia a otro post: {{def:post-slug/anchor-id|texto|embed}}
       references.push({
         postSlug: parts[0].trim(),
         anchorId: parts[1].trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     } else {
-      // Referencia al mismo post: {{def:anchor-id|texto}}
+      // Referencia al mismo post: {{def:anchor-id|texto|embed}}
       references.push({
         anchorId: path.trim(),
         linkText: linkText.trim(),
+        embed: embed,
         fullMatch: match[0],
       });
     }
