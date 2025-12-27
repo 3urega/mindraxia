@@ -76,6 +76,11 @@ export default function Header() {
             </Link>
           </li>
           <li>
+            <Link href="/routes" className="text-text-secondary transition-colors hover:text-star-cyan">
+              Rutas
+            </Link>
+          </li>
+          <li>
             <Link href="/about" className="text-text-secondary transition-colors hover:text-star-cyan">
               Sobre
             </Link>

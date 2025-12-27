@@ -99,6 +99,50 @@ export async function GET(
             createdAt: 'desc',
           },
         },
+        relatedPostsA: {
+          include: {
+            postA: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+            postB: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+          },
+        },
+        relatedPostsB: {
+          include: {
+            postA: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+            postB: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -138,6 +182,30 @@ export async function GET(
         published: ap.published,
         createdAt: ap.createdAt.toISOString(),
       })),
+      relatedPosts: [
+        ...post.relatedPostsA.map((rel) => {
+          const relatedPost = rel.postAId === post.id ? rel.postB : rel.postA;
+          return {
+            id: relatedPost.id,
+            title: relatedPost.title,
+            slug: relatedPost.slug,
+            excerpt: relatedPost.excerpt,
+            published: relatedPost.published,
+          };
+        }),
+        ...post.relatedPostsB.map((rel) => {
+          const relatedPost = rel.postAId === post.id ? rel.postB : rel.postA;
+          return {
+            id: relatedPost.id,
+            title: relatedPost.title,
+            slug: relatedPost.slug,
+            excerpt: relatedPost.excerpt,
+            published: relatedPost.published,
+          };
+        }),
+      ].filter((post, index, self) => 
+        index === self.findIndex((p) => p.id === post.id)
+      ), // Eliminar duplicados
       author: post.author,
       tags: post.tags,
       categories: post.categories,

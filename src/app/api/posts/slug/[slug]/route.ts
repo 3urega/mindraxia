@@ -59,6 +59,50 @@ export async function GET(
             createdAt: 'desc',
           },
         },
+        relatedPostsA: {
+          include: {
+            postA: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+            postB: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+          },
+        },
+        relatedPostsB: {
+          include: {
+            postA: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+            postB: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                excerpt: true,
+                published: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -100,6 +144,28 @@ export async function GET(
         createdAt: ap.createdAt.toISOString(),
         publishedAt: ap.publishedAt?.toISOString() ?? null,
       })),
+      relatedPosts: [
+        ...post.relatedPostsA.map((rel) => {
+          const relatedPost = rel.postAId === post.id ? rel.postB : rel.postA;
+          return relatedPost.published ? {
+            id: relatedPost.id,
+            title: relatedPost.title,
+            slug: relatedPost.slug,
+            excerpt: relatedPost.excerpt,
+          } : null;
+        }).filter(Boolean),
+        ...post.relatedPostsB.map((rel) => {
+          const relatedPost = rel.postAId === post.id ? rel.postB : rel.postA;
+          return relatedPost.published ? {
+            id: relatedPost.id,
+            title: relatedPost.title,
+            slug: relatedPost.slug,
+            excerpt: relatedPost.excerpt,
+          } : null;
+        }).filter(Boolean),
+      ].filter((post, index, self) => 
+        index === self.findIndex((p) => p.id === post.id)
+      ), // Eliminar duplicados
     };
 
     return NextResponse.json(serializedPost, { status: 200 });

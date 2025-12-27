@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import CategorySelector from '@/components/CategorySelector';
 import AssociatedPostsList from '@/components/AssociatedPostsList';
+import RelatedPostsSelector from '@/components/RelatedPostsSelector';
 import { generateSlug } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -529,6 +530,11 @@ export default function EditPostPage() {
           parentPostId={postId}
         />
       )}
+
+      {/* Posts Relacionados */}
+      <div className="mt-8 p-6 bg-surface-secondary rounded-lg border border-border-primary">
+        <RelatedPostsSelector postId={postId} />
+      </div>
     </div>
     </ErrorBoundary>
   );

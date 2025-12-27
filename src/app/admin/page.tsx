@@ -11,10 +11,11 @@ export default async function AdminDashboard() {
   }
 
   // Obtener estadísticas
-  const [totalPosts, publishedPosts, draftPosts] = await Promise.all([
+  const [totalPosts, publishedPosts, draftPosts, totalRoutes] = await Promise.all([
     prisma.post.count(),
     prisma.post.count({ where: { published: true } }),
     prisma.post.count({ where: { published: false } }),
+    prisma.postRoute.count(),
   ]);
 
   return (
@@ -30,7 +31,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Posts */}
         <div
           className="rounded-lg border p-6"
@@ -78,6 +79,22 @@ export default async function AdminDashboard() {
             {draftPosts}
           </p>
         </div>
+
+        {/* Total Rutas */}
+        <div
+          className="rounded-lg border p-6"
+          style={{
+            borderColor: 'var(--border-glow)',
+            backgroundColor: 'rgba(26, 26, 46, 0.5)',
+          }}
+        >
+          <h3 className="text-sm font-medium text-text-secondary">
+            Rutas
+          </h3>
+          <p className="mt-2 text-3xl font-bold text-star-cyan">
+            {totalRoutes}
+          </p>
+        </div>
       </div>
 
       {/* Acciones Rápidas */}
@@ -106,6 +123,21 @@ export default async function AdminDashboard() {
             }}
           >
             Ver Todos los Posts
+          </Link>
+          <Link
+            href="/admin/routes/new"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-nebula-purple text-white font-medium transition-all hover:bg-nebula-purple/90"
+          >
+            Crear Nueva Ruta
+          </Link>
+          <Link
+            href="/admin/routes"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-lg border text-text-primary font-medium transition-colors hover:bg-space-secondary"
+            style={{
+              borderColor: 'var(--border-glow)',
+            }}
+          >
+            Ver Todas las Rutas
           </Link>
           <Link
             href="/blog"

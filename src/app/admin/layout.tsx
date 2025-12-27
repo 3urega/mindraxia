@@ -56,6 +56,18 @@ export default async function AdminLayout({
               >
                 Nuevo Post
               </Link>
+              <Link
+                href="/admin/routes"
+                className="text-text-secondary transition-colors hover:text-star-cyan"
+              >
+                Rutas
+              </Link>
+              <Link
+                href="/admin/routes/new"
+                className="text-text-secondary transition-colors hover:text-star-cyan"
+              >
+                Nueva Ruta
+              </Link>
             </div>
           </div>
 

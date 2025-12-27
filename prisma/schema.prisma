@@ -11,12 +11,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String   // Hasheado
-  posts     Post[]
-  createdAt DateTime @default(now())
+  id            String            @id @default(cuid())
+  email         String            @unique
+  name          String
+  password      String            // Hasheado
+  posts         Post[]
+  createdRoutes PostRoute[]
+  routeProgress PostRouteProgress[]
+  createdAt     DateTime          @default(now())
 }
 
 model Post {
@@ -41,6 +43,10 @@ model Post {
   parentPostId String?     // ID del post padre (opcional)
   parentPost   Post?       @relation("PostAssociations", fields: [parentPostId], references: [id], onDelete: Cascade)
   associatedPosts Post[]   @relation("PostAssociations")
+  relatedPostsA PostRelation[] @relation("PostRelationsA")
+  relatedPostsB PostRelation[] @relation("PostRelationsB")
+  routeItems     PostRouteItem[]
+  routeProgress  PostRouteProgress[]
   
   @@index([slug])
   @@index([published])
@@ -62,6 +68,7 @@ model Category {
   updatedAt    DateTime      @updatedAt
   subcategories Subcategory[]
   posts        Post[]
+  routes       PostRoute[]
   
   @@index([slug])
 }
@@ -147,5 +154,67 @@ model Theorem {
   @@unique([postId, anchorId]) // Un anchorId único por post
   @@index([postId])
   @@index([anchorId])
+}
+
+model PostRelation {
+  id        String   @id @default(cuid())
+  postAId   String
+  postBId   String
+  postA     Post     @relation("PostRelationsA", fields: [postAId], references: [id], onDelete: Cascade)
+  postB     Post     @relation("PostRelationsB", fields: [postBId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([postAId, postBId])
+  @@index([postAId])
+  @@index([postBId])
+}
+
+model PostRoute {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String?
+  categoryId  String
+  category    Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  items       PostRouteItem[]
+  progress    PostRouteProgress[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  @@index([slug])
+  @@index([categoryId])
+  @@index([authorId])
+}
+
+model PostRouteItem {
+  id        String        @id @default(cuid())
+  routeId   String
+  route     PostRoute     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  order     Int           // Posición en la secuencia (1, 2, 3...)
+  
+  @@unique([routeId, order])
+  @@index([routeId])
+  @@index([postId])
+}
+
+model PostRouteProgress {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routeId   String
+  route     PostRoute  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  readAt    DateTime   @default(now())
+  createdAt DateTime   @default(now())
+  
+  @@unique([userId, routeId, postId])
+  @@index([userId])
+  @@index([routeId])
+  @@index([postId])
 }
 
