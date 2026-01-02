@@ -555,6 +555,23 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar sección expandible
+  const insertExpandableSection = () => {
+    const template = ':::expand{Título de la sección}\nContenido de la sección expandible.\n:::\n';
+    insertText(template);
+    // Mover cursor al título
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('{') + 1;
+        const endPos = startPos + template.indexOf('}');
+        textarea.setSelectionRange(newPos, endPos);
+      }
+    }, 10);
+  };
+
   // Insertar límite genérico
   const insertLimit = () => {
     const template = '\\lim\\limits_{x \\to a} \\frac{f(x)}{g(x)}';
@@ -938,6 +955,7 @@ export default function MarkdownEditor({
             else if (value === 'named') insertNamedEquation();
             else if (value === 'definition') insertNumberedDefinition();
             else if (value === 'theorem') insertNumberedTheorem();
+            else if (value === 'expandable') insertExpandableSection();
             e.target.value = '';
           }}
           className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
@@ -955,6 +973,7 @@ export default function MarkdownEditor({
           <option value="named">Ecuación con Nombre ({equationCounter})</option>
           <option value="definition">Definición Numerada ({definitionCounter})</option>
           <option value="theorem">Teorema Numerado ({theoremCounter})</option>
+          <option value="expandable">▶ Sección Expandible</option>
         </select>
         
         <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Avanzadas:</span>
@@ -1155,7 +1174,7 @@ export default function MarkdownEditor({
         </button>
       </div>
     </div>
-  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
+  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, insertExpandableSection, setShowReferenceModal, setShowImageUploader]);
 
   return (
     <div className="w-full relative">

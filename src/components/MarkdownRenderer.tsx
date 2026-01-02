@@ -30,6 +30,10 @@ import {
   extractTheoremReferences,
   preprocessTheoremAnchors,
 } from '@/lib/theorem-anchors';
+import {
+  extractExpandableSections,
+  preprocessExpandableSections,
+} from '@/lib/expandable-anchors';
 import EquationAnchor from './EquationAnchor';
 import EquationReference from './EquationReference';
 import ImageAnchor from './ImageAnchor';
@@ -38,15 +42,18 @@ import DefinitionAnchor from './DefinitionAnchor';
 import DefinitionReference from './DefinitionReference';
 import TheoremAnchor from './TheoremAnchor';
 import TheoremReference from './TheoremReference';
+import ExpandableSection from './ExpandableSection';
 
 interface MarkdownRendererProps {
   content: string;
   currentSlug?: string; // Slug del post actual para referencias relativas
+  onExpandableSectionsChange?: (sectionIds: string[]) => void; // Callback para pasar IDs al control
 }
 
 export default function MarkdownRenderer({
   content,
   currentSlug,
+  onExpandableSectionsChange,
 }: MarkdownRendererProps) {
   const [fontSize, setFontSize] = useState<FontSize>('normal');
   const [fontFamily, setFontFamily] = useState<FontFamily>('sans-serif');
@@ -83,6 +90,7 @@ export default function MarkdownRenderer({
       window.removeEventListener('fontFamilyChanged', handleFontFamilyChange as EventListener);
     };
   }, []);
+  
   // Preprocesar contenido: extraer anclas y referencias ANTES de modificar el contenido
   const anchors = extractAnchors(content);
   const references = extractReferences(content);
@@ -92,6 +100,20 @@ export default function MarkdownRenderer({
   const definitionReferences = extractDefinitionReferences(content);
   const theoremAnchors = extractTheoremAnchors(content);
   const theoremReferences = extractTheoremReferences(content);
+  const expandableSections = extractExpandableSections(content);
+  
+  // Generar IDs únicos para cada sección expandible
+  const expandableSectionIds = expandableSections.map((section, index) => 
+    `expandable-${index}-${section.title.replace(/\s+/g, '-').toLowerCase()}`
+  );
+  
+  // Notificar a el componente padre sobre los IDs de las secciones expandibles
+  useEffect(() => {
+    if (onExpandableSectionsChange) {
+      onExpandableSectionsChange(expandableSectionIds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandableSections.length]);
   
   // Crear mapas de anclas por ID para acceso rápido, con números basados en orden de aparición
   const anchorsMap = new Map(
@@ -112,6 +134,7 @@ export default function MarkdownRenderer({
   processedContent = preprocessImageAnchors(processedContent);
   processedContent = preprocessDefinitionAnchors(processedContent);
   processedContent = preprocessTheoremAnchors(processedContent);
+  processedContent = preprocessExpandableSections(processedContent);
   
   // Crear mapas de referencias para acceso rápido durante el renderizado
   const referencesMap = new Map(
@@ -339,12 +362,13 @@ export default function MarkdownRenderer({
               );
             }
             
-            // Detectar si es un bloque de código especial para ecuaciones, definiciones o teoremas con anclas
-            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, o ```theorem-anchor:anchorId
+            // Detectar si es un bloque de código especial para ecuaciones, definiciones, teoremas o secciones expandibles con anclas
+            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, ```theorem-anchor:anchorId, o ```expandable-section:title
             const language = className?.replace('language-', '') || '';
             const mathAnchorMatch = language.match(/^math-anchor:(.+)$/);
             const definitionAnchorMatch = language.match(/^definition-anchor:(.+)$/);
             const theoremAnchorMatch = language.match(/^theorem-anchor:(.+)$/);
+            const expandableSectionMatch = language.match(/^expandable-section:(.+)$/);
             
             // Procesar ecuaciones
             if (mathAnchorMatch) {
@@ -568,6 +592,81 @@ export default function MarkdownRenderer({
                     </ReactMarkdown>
                   </div>
                 </TheoremAnchor>
+              );
+            }
+            
+            // Procesar secciones expandibles
+            if (expandableSectionMatch) {
+              const title = expandableSectionMatch[1];
+              
+              // El contenido del código es el markdown de la sección expandible
+              // Procesar children que puede ser string o array
+              let sectionContent = '';
+              if (Array.isArray(children)) {
+                sectionContent = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                sectionContent = String(children || '').trim();
+              }
+              sectionContent = sectionContent.trim();
+              
+              // Preprocesar contenido: limpiar problemas comunes de LaTeX
+              sectionContent = sectionContent
+                .replace(/\\+$/gm, '') // Eliminar \\ al final de líneas
+                .replace(/\\newline\s*$/gm, ''); // Eliminar \newline al final de líneas
+              
+              // Encontrar el índice de esta sección para generar el ID
+              const sectionIndex = expandableSections.findIndex(s => s.title.trim() === title);
+              const sectionId = expandableSectionIds[sectionIndex] || `expandable-${sectionIndex}-${title.replace(/\s+/g, '-').toLowerCase()}`;
+              
+              return (
+                <ExpandableSection id={sectionId} title={title}>
+                  <div
+                    style={{
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                      maxWidth: '100%',
+                      overflowX: 'hidden',
+                    }}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[[rehypeKatex, { 
+                        throwOnError: false,
+                        strict: false,
+                      }]]}
+                      components={{
+                        ...markdownComponents,
+                        code: ({ node, inline, className, children, ...props }: any) => {
+                          if (inline) {
+                            return (
+                              <code
+                                className="px-2 py-1 rounded bg-space-primary text-star-cyan text-sm font-mono"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          }
+                          // Para bloques de código dentro de secciones expandibles, usar el estilo normal
+                          return (
+                            <code
+                              className="block p-4 rounded-lg bg-space-primary text-text-secondary text-sm font-mono overflow-x-auto mb-4"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {sectionContent}
+                    </ReactMarkdown>
+                  </div>
+                </ExpandableSection>
               );
             }
             

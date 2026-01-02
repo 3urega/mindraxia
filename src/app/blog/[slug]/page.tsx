@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import MarkdownRenderer from '@/components/MarkdownRenderer';
+import MarkdownRendererWithExpandables from '@/components/MarkdownRendererWithExpandables';
 import ScrollToAnchor from '@/components/ScrollToAnchor';
 import FontSizeSelector from '@/components/FontSizeSelector';
 import SocialShareButtons from '@/components/SocialShareButtons';
@@ -374,7 +374,7 @@ export default async function PostPage({
                 backgroundColor: 'rgba(26, 26, 46, 0.3)',
               }}
             >
-              <MarkdownRenderer content={post.content} currentSlug={post.slug} />
+              <MarkdownRendererWithExpandables content={post.content} currentSlug={post.slug} />
             </div>
 
             {/* Posts Asociados */}
