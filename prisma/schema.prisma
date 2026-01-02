@@ -18,6 +18,7 @@ model User {
   posts         Post[]
   createdRoutes PostRoute[]
   routeProgress PostRouteProgress[]
+  collections   PostCollection[]
   createdAt     DateTime          @default(now())
 }
 
@@ -47,6 +48,7 @@ model Post {
   relatedPostsB PostRelation[] @relation("PostRelationsB")
   routeItems     PostRouteItem[]
   routeProgress  PostRouteProgress[]
+  collectionItems PostCollectionItem[]
   
   @@index([slug])
   @@index([published])
@@ -215,6 +217,35 @@ model PostRouteProgress {
   @@unique([userId, routeId, postId])
   @@index([userId])
   @@index([routeId])
+  @@index([postId])
+}
+
+model PostCollection {
+  id          String              @id @default(cuid())
+  title       String
+  description String?             // Descripción global de la agrupación
+  isPublic    Boolean             @default(false)
+  authorId    String
+  author      User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  items       PostCollectionItem[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  @@index([authorId])
+  @@index([isPublic])
+}
+
+model PostCollectionItem {
+  id          String         @id @default(cuid())
+  collectionId String
+  collection  PostCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  postId      String
+  post        Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  description String?        // Descripción/explicación del usuario para este post en la agrupación
+  createdAt   DateTime       @default(now())
+  
+  @@unique([collectionId, postId])
+  @@index([collectionId])
   @@index([postId])
 }
 

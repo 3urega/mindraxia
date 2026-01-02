@@ -70,16 +70,21 @@ export default function Header() {
               Inicio
             </Link>
           </li>
-          <li>
-            <Link href="/blog" className="text-text-secondary transition-colors hover:text-star-cyan">
-              Blog
-            </Link>
-          </li>
-          <li>
-            <Link href="/routes" className="text-text-secondary transition-colors hover:text-star-cyan">
-              Rutas
-            </Link>
-          </li>
+        <li>
+          <Link href="/blog" className="text-text-secondary transition-colors hover:text-star-cyan">
+            Blog
+          </Link>
+        </li>
+        <li>
+          <Link href="/routes" className="text-text-secondary transition-colors hover:text-star-cyan">
+            Rutas
+          </Link>
+        </li>
+        <li>
+          <Link href="/collections" className="text-text-secondary transition-colors hover:text-star-cyan">
+            Agrupaciones
+          </Link>
+        </li>
           <li>
             <Link href="/about" className="text-text-secondary transition-colors hover:text-star-cyan">
               Sobre
