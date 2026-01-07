@@ -55,6 +55,13 @@ interface OrganizedData {
   };
 }
 
+interface Route {
+  id: string;
+  name: string;
+  slug: string;
+  postCount: number;
+}
+
 export default function AdminPostsPage() {
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -62,11 +69,24 @@ export default function AdminPostsPage() {
   const [error, setError] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [routePosts, setRoutePosts] = useState<Set<string>>(new Set());
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchPosts();
+    fetchRoutes();
   }, []);
+
+  useEffect(() => {
+    if (selectedRouteId) {
+      fetchRoutePosts(selectedRouteId);
+    } else {
+      setRoutePosts(new Set());
+    }
+  }, [selectedRouteId]);
 
   const fetchPosts = async () => {
     try {
@@ -84,6 +104,37 @@ export default function AdminPostsPage() {
       setError('Error al cargar los posts');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRoutes = async () => {
+    try {
+      setLoadingRoutes(true);
+      const response = await fetch('/api/routes');
+      if (!response.ok) {
+        throw new Error('Error al cargar rutas');
+      }
+      const data = await response.json();
+      setRoutes(data.routes || []);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  };
+
+  const fetchRoutePosts = async (routeId: string) => {
+    try {
+      const response = await fetch(`/api/routes/${routeId}/items`);
+      if (!response.ok) {
+        throw new Error('Error al cargar posts de la ruta');
+      }
+      const data = await response.json();
+      const postIds = new Set((data.items || []).map((item: any) => item.postId));
+      setRoutePosts(postIds);
+    } catch (error) {
+      console.error('Error fetching route posts:', error);
+      setRoutePosts(new Set());
     }
   };
 
@@ -270,8 +321,15 @@ export default function AdminPostsPage() {
     }
     
     // Filtrar solo posts padre (sin parentPostId)
-    return filteredPosts.filter((post) => !post.parentPostId);
-  }, [selectedCategoryId, selectedSubcategoryId, organizedData, organizePostsWithAssociations]);
+    let result = filteredPosts.filter((post) => !post.parentPostId);
+    
+    // Si hay una ruta seleccionada, filtrar por posts de esa ruta
+    if (selectedRouteId && routePosts.size > 0) {
+      result = result.filter((post) => routePosts.has(post.id));
+    }
+    
+    return result;
+  }, [selectedCategoryId, selectedSubcategoryId, selectedRouteId, routePosts, organizedData, organizePostsWithAssociations]);
 
   const handleCategoryClick = (categoryId: string) => {
     if (selectedCategoryId === categoryId) {
@@ -320,20 +378,71 @@ export default function AdminPostsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-text-primary">Posts</h1>
-          <p className="mt-2 text-text-secondary">Gestiona todos tus artículos</p>
+    <div className="flex gap-6">
+      {/* Sidebar de Rutas */}
+      <aside className="w-64 flex-shrink-0">
+        <div className="sticky top-4 rounded-lg border p-4" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+          <h2 className="text-lg font-semibold text-text-primary mb-4">Rutas</h2>
+          {loadingRoutes ? (
+            <div className="text-text-muted text-sm">Cargando rutas...</div>
+          ) : routes.length === 0 ? (
+            <div className="text-text-muted text-sm">No hay rutas disponibles</div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setSelectedRouteId(null);
+                  setRoutePosts(new Set());
+                }}
+                className={`w-full text-left px-3 py-2 rounded border transition-colors text-sm ${
+                  selectedRouteId === null
+                    ? 'bg-star-cyan/20 text-star-cyan border-star-cyan'
+                    : 'bg-space-primary text-text-secondary border-border-glow hover:bg-space-secondary'
+                }`}
+                style={selectedRouteId === null ? {} : { borderColor: 'var(--border-glow)' }}
+              >
+                Todas las rutas
+              </button>
+              {routes.map((route) => (
+                <button
+                  key={route.id}
+                  onClick={() => setSelectedRouteId(route.id)}
+                  className={`w-full text-left px-3 py-2 rounded border transition-colors text-sm ${
+                    selectedRouteId === route.id
+                      ? 'bg-star-cyan/20 text-star-cyan border-star-cyan'
+                      : 'bg-space-primary text-text-secondary border-border-glow hover:bg-space-secondary'
+                  }`}
+                  style={selectedRouteId === route.id ? {} : { borderColor: 'var(--border-glow)' }}
+                >
+                  <div className="font-medium">{route.name}</div>
+                  <div className="text-xs text-text-muted mt-1">{route.postCount} posts</div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <Link
-          href="/admin/posts/new"
-          className="px-6 py-3 rounded-lg bg-star-cyan text-space-dark font-medium transition-all hover:bg-star-cyan/90 glow-cyan"
-        >
-          Nuevo Post
-        </Link>
-      </div>
+      </aside>
+
+      {/* Contenido principal */}
+      <div className="flex-1 min-w-0 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-text-primary">Posts</h1>
+            <p className="mt-2 text-text-secondary">Gestiona todos tus artículos</p>
+            {selectedRouteId && (
+              <p className="mt-1 text-sm text-nebula-purple">
+                Filtrando por ruta: {routes.find((r) => r.id === selectedRouteId)?.name}
+              </p>
+            )}
+          </div>
+          <Link
+            href="/admin/posts/new"
+            className="px-6 py-3 rounded-lg bg-star-cyan text-space-dark font-medium transition-all hover:bg-star-cyan/90 glow-cyan"
+          >
+            Nuevo Post
+          </Link>
+        </div>
 
       {/* Barra de Categorías */}
       {categories.length > 0 && (
@@ -698,6 +807,7 @@ export default function AdminPostsPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
