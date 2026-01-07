@@ -6,6 +6,7 @@ import { syncPostEquations } from '@/lib/sync-equations';
 import { syncPostImageAnchors } from '@/lib/sync-images';
 import { syncPostDefinitions } from '@/lib/sync-definitions';
 import { syncPostTheorems } from '@/lib/sync-theorems';
+import { syncPostProofs } from '@/lib/sync-proofs';
 
 /**
  * GET /api/posts/[id]
@@ -540,8 +541,9 @@ export async function PUT(
         await syncPostImageAnchors(id, updateData.content);
         await syncPostDefinitions(id, updateData.content);
         await syncPostTheorems(id, updateData.content);
+        await syncPostProofs(id, updateData.content);
       } catch (error) {
-        console.error('Error syncing equations/images/definitions/theorems (non-fatal):', error);
+        console.error('Error syncing equations/images/definitions/theorems/proofs (non-fatal):', error);
         // No fallar la actualización del post si hay error sincronizando
       }
     }

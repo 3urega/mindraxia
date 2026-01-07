@@ -41,6 +41,7 @@ model Post {
   images      Image[]
   definitions Definition[]
   theorems    Theorem[]
+  proofs      Proof[]
   parentPostId String?     // ID del post padre (opcional)
   parentPost   Post?       @relation("PostAssociations", fields: [parentPostId], references: [id], onDelete: Cascade)
   associatedPosts Post[]   @relation("PostAssociations")
@@ -148,6 +149,22 @@ model Theorem {
   description String?  // Descripción para búsquedas con IA
   content     String   // Contenido markdown del teorema
   number      Int      // Número automático del teorema en el post
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([postId, anchorId]) // Un anchorId único por post
+  @@index([postId])
+  @@index([anchorId])
+}
+
+model Proof {
+  id          String   @id @default(cuid())
+  anchorId    String   // ID único del anchor (ej: "proof-pitagoras")
+  description String?  // Descripción para búsquedas con IA
+  content     String   // Contenido markdown de la demostración
+  number      Int      // Número automático de la demostración en el post
   postId      String
   post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())

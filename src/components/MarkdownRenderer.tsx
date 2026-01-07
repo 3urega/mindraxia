@@ -31,6 +31,11 @@ import {
   preprocessTheoremAnchors,
 } from '@/lib/theorem-anchors';
 import {
+  extractProofAnchors,
+  extractProofReferences,
+  preprocessProofAnchors,
+} from '@/lib/proof-anchors';
+import {
   extractExpandableSections,
   preprocessExpandableSections,
 } from '@/lib/expandable-anchors';
@@ -42,6 +47,8 @@ import DefinitionAnchor from './DefinitionAnchor';
 import DefinitionReference from './DefinitionReference';
 import TheoremAnchor from './TheoremAnchor';
 import TheoremReference from './TheoremReference';
+import ProofAnchor from './ProofAnchor';
+import ProofReference from './ProofReference';
 import ExpandableSection from './ExpandableSection';
 
 interface MarkdownRendererProps {
@@ -100,6 +107,8 @@ export default function MarkdownRenderer({
   const definitionReferences = extractDefinitionReferences(content);
   const theoremAnchors = extractTheoremAnchors(content);
   const theoremReferences = extractTheoremReferences(content);
+  const proofAnchors = extractProofAnchors(content);
+  const proofReferences = extractProofReferences(content);
   const expandableSections = extractExpandableSections(content);
   
   // Generar IDs únicos para cada sección expandible
@@ -121,19 +130,23 @@ export default function MarkdownRenderer({
   );
   const imageAnchorsMap = new Map(imageAnchors.map(a => [a.anchorId, a]));
   
-  // Crear mapas de definiciones y teoremas con números basados en orden de aparición
+  // Crear mapas de definiciones, teoremas y demostraciones con números basados en orden de aparición
   const definitionAnchorsMap = new Map(
     definitionAnchors.map((def, index) => [def.anchorId, { ...def, number: index + 1 }])
   );
   const theoremAnchorsMap = new Map(
     theoremAnchors.map((thm, index) => [thm.anchorId, { ...thm, number: index + 1 }])
   );
+  const proofAnchorsMap = new Map(
+    proofAnchors.map((prf, index) => [prf.anchorId, { ...prf, number: index + 1 }])
+  );
   
-  // Preprocesar markdown: convertir ecuaciones, imágenes, definiciones y teoremas con anclas
+  // Preprocesar markdown: convertir ecuaciones, imágenes, definiciones, teoremas y demostraciones con anclas
   let processedContent = preprocessAnchors(content);
   processedContent = preprocessImageAnchors(processedContent);
   processedContent = preprocessDefinitionAnchors(processedContent);
   processedContent = preprocessTheoremAnchors(processedContent);
+  processedContent = preprocessProofAnchors(processedContent);
   processedContent = preprocessExpandableSections(processedContent);
   
   // Crear mapas de referencias para acceso rápido durante el renderizado
@@ -180,6 +193,18 @@ export default function MarkdownRenderer({
       },
     ])
   );
+  
+  const proofReferencesMap = new Map(
+    proofReferences.map((ref) => [
+      ref.fullMatch,
+      {
+        anchorId: ref.anchorId,
+        postSlug: ref.postSlug,
+        linkText: ref.linkText,
+        embed: ref.embed,
+      },
+    ])
+  );
 
   // Obtener clases de tamaño y familia de fuente
   const fontSizeClass = fontSize === 'small' ? 'text-sm' : fontSize === 'large' ? 'text-lg' : 'text-base';
@@ -216,9 +241,9 @@ export default function MarkdownRenderer({
                 let lastIndex = 0;
                 let match;
                 
-                // Regex combinado para referencias de ecuaciones, imágenes, definiciones y teoremas
+                // Regex combinado para referencias de ecuaciones, imágenes, definiciones, teoremas y demostraciones
                 // Captura el tercer parámetro opcional (embed)
-                const refRegex = /\{\{(eq|img|def|thm):([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
+                const refRegex = /\{\{(eq|img|def|thm|prf):([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
                 
                 while ((match = refRegex.exec(children)) !== null) {
                   // Añadir texto antes de la referencia
@@ -270,6 +295,17 @@ export default function MarkdownRenderer({
                     parts.push(
                       <TheoremReference
                         key={`thm-ref-${match.index}`}
+                        anchorId={anchorId}
+                        postSlug={postSlug}
+                        linkText={linkText.trim()}
+                        currentSlug={currentSlug}
+                        embed={embed}
+                      />
+                    );
+                  } else if (refType === 'prf') {
+                    parts.push(
+                      <ProofReference
+                        key={`prf-ref-${match.index}`}
                         anchorId={anchorId}
                         postSlug={postSlug}
                         linkText={linkText.trim()}
@@ -363,11 +399,12 @@ export default function MarkdownRenderer({
             }
             
             // Detectar si es un bloque de código especial para ecuaciones, definiciones, teoremas o secciones expandibles con anclas
-            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, ```theorem-anchor:anchorId, o ```expandable-section:title
+            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, ```theorem-anchor:anchorId, ```proof-anchor:anchorId, o ```expandable-section:title
             const language = className?.replace('language-', '') || '';
             const mathAnchorMatch = language.match(/^math-anchor:(.+)$/);
             const definitionAnchorMatch = language.match(/^definition-anchor:(.+)$/);
             const theoremAnchorMatch = language.match(/^theorem-anchor:(.+)$/);
+            const proofAnchorMatch = language.match(/^proof-anchor:(.+)$/);
             const expandableSectionMatch = language.match(/^expandable-section:(.+)$/);
             
             // Procesar ecuaciones
@@ -592,6 +629,92 @@ export default function MarkdownRenderer({
                     </ReactMarkdown>
                   </div>
                 </TheoremAnchor>
+              );
+            }
+            
+            // Procesar demostraciones
+            if (proofAnchorMatch) {
+              const anchorId = proofAnchorMatch[1];
+              const anchor = proofAnchorsMap.get(anchorId);
+              
+              // El contenido del código es el markdown de la demostración
+              // Procesar children que puede ser string o array
+              let proofContent = '';
+              if (Array.isArray(children)) {
+                proofContent = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                proofContent = String(children || '').trim();
+              }
+              proofContent = proofContent.trim();
+              
+              // Preprocesar contenido: limpiar problemas comunes de LaTeX
+              // Eliminar `\\` al final de líneas que causan problemas en LaTeX display mode
+              // Esto se hace antes de que react-markdown procese el contenido
+              proofContent = proofContent
+                .replace(/\\+$/gm, '') // Eliminar \\ al final de líneas
+                .replace(/\\newline\s*$/gm, ''); // Eliminar \newline al final de líneas
+              
+              // Usar currentSlug o un slug temporal para el preview
+              const slug = currentSlug || 'preview';
+              
+              // Si no hay anchor en el mapa, usar valores por defecto (para preview)
+              const number = anchor?.number || proofAnchors.findIndex(p => p.anchorId === anchorId) + 1 || 1;
+              const description = anchor?.description;
+              
+              return (
+                <ProofAnchor
+                  anchorId={anchorId}
+                  description={description}
+                  number={number}
+                  postSlug={slug}
+                >
+                  <div
+                    style={{
+                      wordWrap: 'break-word',
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                      maxWidth: '100%',
+                      overflowX: 'hidden',
+                    }}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[[rehypeKatex, { 
+                        throwOnError: false,
+                        strict: false,
+                      }]]}
+                      components={{
+                        ...markdownComponents,
+                        code: ({ node, inline, className, children, ...props }: any) => {
+                          if (inline) {
+                            return (
+                              <code
+                                className="px-2 py-1 rounded bg-space-primary text-star-cyan text-sm font-mono"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          }
+                          // Para bloques de código dentro de demostraciones, usar el estilo normal
+                          return (
+                            <code
+                              className="block p-4 rounded-lg bg-space-primary text-text-secondary text-sm font-mono overflow-x-auto mb-4"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
+                      {proofContent}
+                    </ReactMarkdown>
+                  </div>
+                </ProofAnchor>
               );
             }
             

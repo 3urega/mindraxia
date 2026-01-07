@@ -555,6 +555,38 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar demostración con ancla
+  const insertAnchoredProof = () => {
+    const template = ':::proof{#prf:}\nContenido de la demostración.\n:::\n';
+    insertText(template);
+    // Mover cursor al ID del anchor
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('{#prf:') + 6;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+    }, 10);
+  };
+
+  // Insertar demostración con ancla y descripción
+  const insertAnchoredProofWithDescription = () => {
+    const template = ':::proof{#prf:|descripción: }\nContenido de la demostración.\n:::\n';
+    insertText(template);
+    // Mover cursor a la descripción
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('descripción: ') + 13;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+    }, 10);
+  };
+
   // Insertar límite genérico
   const insertLimit = () => {
     const template = '\\lim\\limits_{x \\to a} \\frac{f(x)}{g(x)}';
@@ -996,6 +1028,8 @@ export default function MarkdownEditor({
             else if (value === 'def-anchor-desc') insertAnchoredDefinitionWithDescription();
             else if (value === 'thm-anchor') insertAnchoredTheorem();
             else if (value === 'thm-anchor-desc') insertAnchoredTheoremWithDescription();
+            else if (value === 'prf-anchor') insertAnchoredProof();
+            else if (value === 'prf-anchor-desc') insertAnchoredProofWithDescription();
             e.target.value = '';
           }}
           className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
@@ -1013,6 +1047,8 @@ export default function MarkdownEditor({
           <option value="def-anchor-desc">Definición + Descripción</option>
           <option value="thm-anchor">Teorema con Ancla</option>
           <option value="thm-anchor-desc">Teorema + Descripción</option>
+          <option value="prf-anchor">Demostración con Ancla</option>
+          <option value="prf-anchor-desc">Demostración + Descripción</option>
         </select>
         
         <button
@@ -1155,7 +1191,7 @@ export default function MarkdownEditor({
         </button>
       </div>
     </div>
-  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
+  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertAnchoredProof, insertAnchoredProofWithDescription, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
 
   return (
     <div className="w-full relative">

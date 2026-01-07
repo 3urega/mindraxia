@@ -354,15 +354,28 @@ export default async function PostPage({
             <PostRouteInfo postId={post.id} currentPostSlug={post.slug} />
 
             {/* Selector de tamaño de fuente y compartir */}
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <SocialShareButtons 
-                title={post.title} 
-                url={`/blog/${post.slug}`}
-                description={post.excerpt || undefined}
-                author={post.author?.name}
-                date={displayDate ? formatDate(displayDate) : undefined}
-              />
-              <FontSizeSelector />
+            <div className="mb-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <SocialShareButtons 
+                  title={post.title} 
+                  url={`/blog/${post.slug}`}
+                  description={post.excerpt || undefined}
+                  author={post.author?.name}
+                  date={displayDate ? formatDate(displayDate) : undefined}
+                />
+                <FontSizeSelector />
+              </div>
+              
+              {/* Enlace a vista de resumen */}
+              <div>
+                <Link
+                  href={`/blog/${post.slug}/resumen`}
+                  className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors hover:border-star-cyan hover:text-star-cyan"
+                  style={{ borderColor: 'var(--border-glow)' }}
+                >
+                  📋 Ver resumen de definiciones, fórmulas y teoremas
+                </Link>
+              </div>
             </div>
 
             {/* Contenido del post */}
