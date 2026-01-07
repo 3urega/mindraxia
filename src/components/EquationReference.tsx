@@ -63,6 +63,8 @@ export default function EquationReference({
     return (
       <Link
         href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
         title={`Ir a ecuación: ${anchorId}`}
       >
@@ -73,14 +75,16 @@ export default function EquationReference({
 
   // Si es embed pero no hay postSlug, mostrar solo enlace
   if (!postSlug) {
-    return (
-      <Link
-        href={href}
-        className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
-        title={`Ir a ecuación: ${anchorId}`}
-      >
-        {linkText}
-      </Link>
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
+      title={`Ir a ecuación: ${anchorId}`}
+    >
+      {linkText}
+    </Link>
     );
   }
 
@@ -117,12 +121,16 @@ export default function EquationReference({
       <div className="mb-3 flex items-center justify-between">
         <Link
           href={`/blog/${embeddedData.postSlug}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-nebula-purple hover:text-nebula-purple/80 transition-colors"
         >
           De: {embeddedData.postTitle}
         </Link>
         <Link
           href={href}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-star-cyan hover:text-star-cyan/80 transition-colors underline"
         >
           Ver original →

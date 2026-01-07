@@ -296,13 +296,13 @@ export default function EditPostPage() {
               + Post Asociado
             </button>
           )}
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 rounded-lg border transition-colors hover:bg-red-500/10 text-red-400 border-red-500/50 hover:border-red-500"
-          >
-            Eliminar
-          </button>
-        </div>
+        <button
+          onClick={handleDelete}
+          className="px-4 py-2 rounded-lg border transition-colors hover:bg-red-500/10 text-red-400 border-red-500/50 hover:border-red-500"
+        >
+          Eliminar
+        </button>
+      </div>
       </div>
 
       {/* Mostrar post padre si existe */}

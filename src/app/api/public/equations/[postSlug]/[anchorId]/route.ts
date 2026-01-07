@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/get-session';
 
 /**
  * GET /api/public/equations/[postSlug]/[anchorId]
@@ -11,6 +12,7 @@ export async function GET(
 ) {
   try {
     const { postSlug, anchorId } = await params;
+    const user = await getCurrentUser();
 
     // Validar parámetros
     if (!postSlug || !anchorId) {
@@ -23,11 +25,17 @@ export async function GET(
       );
     }
 
-    // Buscar el post por slug (solo publicado)
+    // Buscar el post por slug:
+    // - Público: solo publicado
+    // - Si hay sesión: permitir también borradores del propio autor
     const post = await prisma.post.findFirst({
       where: {
         slug: postSlug,
-        published: true,
+        ...(user
+          ? {
+              OR: [{ published: true }, { authorId: user.id }],
+            }
+          : { published: true }),
       },
       select: {
         id: true,

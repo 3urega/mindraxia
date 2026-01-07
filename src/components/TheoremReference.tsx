@@ -65,6 +65,8 @@ export default function TheoremReference({
     return (
       <Link
         href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
         title={`Ir a teorema: ${anchorId}`}
       >
@@ -75,14 +77,16 @@ export default function TheoremReference({
 
   // Si es embed pero no hay postSlug, mostrar solo enlace
   if (!postSlug) {
-    return (
-      <Link
-        href={href}
-        className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
-        title={`Ir a teorema: ${anchorId}`}
-      >
-        {linkText}
-      </Link>
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
+      title={`Ir a teorema: ${anchorId}`}
+    >
+      {linkText}
+    </Link>
     );
   }
 
@@ -123,6 +127,8 @@ export default function TheoremReference({
           </h4>
           <Link
             href={`/blog/${embeddedData.postSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-xs text-nebula-purple hover:text-nebula-purple/80 transition-colors"
           >
             (De: {embeddedData.postTitle})
@@ -130,6 +136,8 @@ export default function TheoremReference({
         </div>
         <Link
           href={href}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-star-cyan hover:text-star-cyan/80 transition-colors underline"
         >
           Ver original →

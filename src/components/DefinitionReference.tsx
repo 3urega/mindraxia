@@ -65,6 +65,8 @@ export default function DefinitionReference({
     return (
       <Link
         href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
         title={`Ir a definición: ${anchorId}`}
       >
@@ -75,14 +77,16 @@ export default function DefinitionReference({
 
   // Si es embed pero no hay postSlug, mostrar solo enlace
   if (!postSlug) {
-    return (
-      <Link
-        href={href}
-        className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
-        title={`Ir a definición: ${anchorId}`}
-      >
-        {linkText}
-      </Link>
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
+      title={`Ir a definición: ${anchorId}`}
+    >
+      {linkText}
+    </Link>
     );
   }
 
@@ -99,6 +103,8 @@ export default function DefinitionReference({
     return (
       <Link
         href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className="text-star-cyan underline decoration-dotted underline-offset-2 transition-colors hover:text-nebula-purple"
         title={`Ir a definición: ${anchorId}`}
       >
@@ -119,6 +125,8 @@ export default function DefinitionReference({
       <div className="mb-3">
         <Link
           href={href}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-nebula-purple hover:text-nebula-purple/80 transition-colors"
         >
           (De: {embeddedData.postTitle})

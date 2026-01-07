@@ -72,6 +72,7 @@ export default function AdminPostsPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [routePosts, setRoutePosts] = useState<Set<string>>(new Set());
+  const [routePostOrders, setRoutePostOrders] = useState<Map<string, number>>(new Map());
   const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
@@ -85,6 +86,7 @@ export default function AdminPostsPage() {
       fetchRoutePosts(selectedRouteId);
     } else {
       setRoutePosts(new Set());
+      setRoutePostOrders(new Map());
     }
   }, [selectedRouteId]);
 
@@ -130,11 +132,20 @@ export default function AdminPostsPage() {
         throw new Error('Error al cargar posts de la ruta');
       }
       const data = await response.json();
-      const postIds = new Set((data.items || []).map((item: any) => item.postId));
+      const postIds = new Set<string>();
+      const postOrders = new Map<string, number>();
+      
+      (data.items || []).forEach((item: any) => {
+        postIds.add(item.postId);
+        postOrders.set(item.postId, item.order);
+      });
+      
       setRoutePosts(postIds);
+      setRoutePostOrders(postOrders);
     } catch (error) {
       console.error('Error fetching route posts:', error);
       setRoutePosts(new Set());
+      setRoutePostOrders(new Map());
     }
   };
 
@@ -326,6 +337,12 @@ export default function AdminPostsPage() {
     // Si hay una ruta seleccionada, filtrar por posts de esa ruta
     if (selectedRouteId && routePosts.size > 0) {
       result = result.filter((post) => routePosts.has(post.id));
+      // Ordenar por el orden en la ruta
+      result.sort((a, b) => {
+        const orderA = routePostOrders.get(a.id) || 0;
+        const orderB = routePostOrders.get(b.id) || 0;
+        return orderA - orderB;
+      });
     }
     
     return result;
@@ -554,6 +571,11 @@ export default function AdminPostsPage() {
             <table className="w-full">
               <thead className="bg-space-primary/50">
                 <tr>
+                  {selectedRouteId && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Orden
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                     Título
                   </th>
@@ -580,6 +602,13 @@ export default function AdminPostsPage() {
                     <Fragment key={post.id}>
                       {/* Post padre */}
                       <tr className="hover:bg-space-primary/30 transition-colors">
+                        {selectedRouteId && (
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-star-cyan/20 text-star-cyan font-semibold text-sm">
+                              {routePostOrders.get(post.id) || '-'}
+                            </div>
+                          </td>
+                        )}
                         <td className="px-6 py-4">
                           <div className="flex items-start gap-2">
                             {hasAssociatedPosts && (
@@ -688,6 +717,11 @@ export default function AdminPostsPage() {
                       
                       return (
                         <tr key={`associated-${fullAssociatedPost.id}`} className="hover:bg-space-primary/30 transition-colors bg-space-primary/10">
+                          {selectedRouteId && (
+                            <td className="px-6 py-4">
+                              {/* Los posts asociados no tienen orden en la ruta */}
+                            </td>
+                          )}
                           <td className="px-6 py-4">
                             <div className="pl-6 border-l-2" style={{ borderColor: 'var(--nebula-purple)' }}>
                               <span className="text-xs text-nebula-purple font-medium mb-1 block">↳ Post asociado</span>
