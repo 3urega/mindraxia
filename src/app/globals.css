@@ -241,3 +241,38 @@ select option:hover {
   background-color: var(--color-space-secondary) !important;
 }
 
+/* Estilos para sincronización editor-preview */
+.editor-sync-highlight {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .editor-sync-highlight,
+:root:not([data-theme]) .editor-sync-highlight {
+  background-color: rgba(100, 255, 218, 0.1) !important;
+  border-left: 3px solid var(--color-star-cyan) !important;
+  padding-left: 0.5rem !important;
+  margin-left: -0.5rem !important;
+  box-shadow: 0 0 10px rgba(100, 255, 218, 0.2);
+}
+
+[data-theme="light"] .editor-sync-highlight {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+  border-left: 3px solid var(--color-star-cyan) !important;
+  padding-left: 0.5rem !important;
+  margin-left: -0.5rem !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+/* Asegurar que el highlight no interfiera con otros estilos */
+.editor-sync-highlight p,
+.editor-sync-highlight h1,
+.editor-sync-highlight h2,
+.editor-sync-highlight h3,
+.editor-sync-highlight h4,
+.editor-sync-highlight h5,
+.editor-sync-highlight h6 {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+

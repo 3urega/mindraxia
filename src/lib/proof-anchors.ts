@@ -134,3 +134,4 @@ export function getProofReferenceUrl(
   return `/blog/${slug}#${getProofHtmlId(anchorId)}`;
 }
 
+

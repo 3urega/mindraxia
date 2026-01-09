@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
 import ReferenceSelectorModal from './ReferenceSelectorModal';
 import ImageUploader from './ImageUploader';
+import { useEditorPreviewSync } from '@/hooks/useEditorPreviewSync';
 
 interface MarkdownEditorProps {
   value: string;
@@ -33,7 +34,15 @@ export default function MarkdownEditor({
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
+  // Hook de sincronización editor-preview (solo en modo split)
+  useEditorPreviewSync({
+    enabled: view === 'split',
+    markdownContent: value,
+    previewContainerRef,
+    textareaRef,
+  });
 
   // Función para insertar texto en la posición del cursor
   const insertText = (textToInsert: string) => {
@@ -731,6 +740,44 @@ export default function MarkdownEditor({
     insertText(markdownText);
   };
 
+  // Insertar sección
+  const insertSection = () => {
+    const template = `[[section:Nombre de la Sección]]\n\n`;
+    insertText(template);
+    // Mover cursor al nombre de la sección para fácil edición
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de [[section:
+        const newPos = startPos + 11;
+        // Seleccionar "Nombre de la Sección" para fácil reemplazo
+        const endPos = newPos + 22;
+        textarea.setSelectionRange(newPos, endPos);
+      }
+    }, 10);
+  };
+
+  // Insertar subsección
+  const insertSubsection = () => {
+    const template = `[[subsection:Nombre de la Subsección]]\n\n`;
+    insertText(template);
+    // Mover cursor al nombre de la subsección para fácil edición
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de [[subsection:
+        const newPos = startPos + 14;
+        // Seleccionar "Nombre de la Subsección" para fácil reemplazo
+        const endPos = newPos + 25;
+        textarea.setSelectionRange(newPos, endPos);
+      }
+    }, 10);
+  };
+
   // Insertar plantilla de imagen con ancla
   const insertImageAnchor = () => {
     const template = '![texto alternativo](url-de-la-imagen){#img:}';
@@ -1114,6 +1161,29 @@ export default function MarkdownEditor({
         )}
       </div>
 
+      {/* Secciones */}
+      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+        <span className="text-xs text-text-muted self-center mr-2 font-semibold">Secciones:</span>
+        <button
+          type="button"
+          onClick={insertSection}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar sección principal (aparecerá en el índice)"
+        >
+          📑 Sección
+        </button>
+        <button
+          type="button"
+          onClick={insertSubsection}
+          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+          style={{ borderColor: 'var(--border-glow)' }}
+          title="Insertar subsección (aparecerá en el índice dentro de una sección)"
+        >
+          📄 Subsección
+        </button>
+      </div>
+
       {/* Expresiones Matemáticas Comunes */}
       <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
         <span className="text-xs text-text-muted self-center mr-2 font-semibold w-full mb-2">Expresiones Comunes:</span>
@@ -1191,7 +1261,7 @@ export default function MarkdownEditor({
         </button>
       </div>
     </div>
-  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertAnchoredProof, insertAnchoredProofWithDescription, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
+  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertAnchoredProof, insertAnchoredProofWithDescription, insertSection, insertSubsection, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
 
   return (
     <div className="w-full relative">
@@ -1484,6 +1554,7 @@ export default function MarkdownEditor({
         {/* Preview */}
         {(view === 'preview' || view === 'split') && (
           <div
+            ref={previewContainerRef}
             className={`${
               view === 'split' ? 'w-1/2' : 'w-full'
             } p-4 rounded-lg border overflow-y-auto`}
@@ -1496,7 +1567,11 @@ export default function MarkdownEditor({
             }}
           >
             {value ? (
-              <MarkdownRenderer content={value} currentSlug={currentPostSlug} />
+              <MarkdownRenderer 
+                content={value} 
+                currentSlug={currentPostSlug}
+                enableLineMapping={view === 'split'}
+              />
             ) : (
               <p className="text-text-muted italic">El preview aparecerá aquí...</p>
             )}

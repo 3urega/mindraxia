@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -39,6 +39,11 @@ import {
   extractExpandableSections,
   preprocessExpandableSections,
 } from '@/lib/expandable-anchors';
+import {
+  extractSections,
+  preprocessSections,
+  type Section,
+} from '@/lib/section-anchors';
 import EquationAnchor from './EquationAnchor';
 import EquationReference from './EquationReference';
 import ImageAnchor from './ImageAnchor';
@@ -55,12 +60,16 @@ interface MarkdownRendererProps {
   content: string;
   currentSlug?: string; // Slug del post actual para referencias relativas
   onExpandableSectionsChange?: (sectionIds: string[]) => void; // Callback para pasar IDs al control
+  onSectionsChange?: (sections: Section[]) => void; // Callback para pasar secciones al índice
+  enableLineMapping?: boolean; // Habilitar mapeo de líneas para sincronización editor-preview
 }
 
 export default function MarkdownRenderer({
   content,
   currentSlug,
   onExpandableSectionsChange,
+  onSectionsChange,
+  enableLineMapping = false,
 }: MarkdownRendererProps) {
   const [fontSize, setFontSize] = useState<FontSize>('normal');
   const [fontFamily, setFontFamily] = useState<FontFamily>('sans-serif');
@@ -110,6 +119,7 @@ export default function MarkdownRenderer({
   const proofAnchors = extractProofAnchors(content);
   const proofReferences = extractProofReferences(content);
   const expandableSections = extractExpandableSections(content);
+  const sections = extractSections(content);
   
   // Generar IDs únicos para cada sección expandible
   const expandableSectionIds = expandableSections.map((section, index) => 
@@ -123,6 +133,14 @@ export default function MarkdownRenderer({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandableSections.length]);
+
+  // Notificar a el componente padre sobre las secciones
+  useEffect(() => {
+    if (onSectionsChange) {
+      onSectionsChange(sections);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections.length]);
   
   // Crear mapas de anclas por ID para acceso rápido, con números basados en orden de aparición
   const anchorsMap = new Map(
@@ -140,14 +158,59 @@ export default function MarkdownRenderer({
   const proofAnchorsMap = new Map(
     proofAnchors.map((prf, index) => [prf.anchorId, { ...prf, number: index + 1 }])
   );
+
+  // Crear mapa de secciones por título para asignar IDs a encabezados
+  const sectionsMap = new Map(
+    sections.map((section) => [section.title.trim(), section])
+  );
   
   // Preprocesar markdown: convertir ecuaciones, imágenes, definiciones, teoremas y demostraciones con anclas
-  let processedContent = preprocessAnchors(content);
+  // IMPORTANTE: preprocessSections debe ejecutarse ANTES de otros preprocesamientos para que los encabezados se generen correctamente
+  let processedContent = preprocessSections(content);
+  processedContent = preprocessAnchors(processedContent);
   processedContent = preprocessImageAnchors(processedContent);
   processedContent = preprocessDefinitionAnchors(processedContent);
   processedContent = preprocessTheoremAnchors(processedContent);
   processedContent = preprocessProofAnchors(processedContent);
   processedContent = preprocessExpandableSections(processedContent);
+
+  /**
+   * Calcula las líneas del markdown original que corresponden a un fragmento de texto
+   * Usa el contenido original (content) para el mapeo, no el procesado
+   */
+  const getLineRangeForText = useCallback((text: string, searchInProcessed = false): { start: number; end: number } => {
+    if (!enableLineMapping || !text) {
+      return { start: 0, end: 0 };
+    }
+
+    const searchContent = searchInProcessed ? processedContent : content;
+    // Buscar la primera ocurrencia del texto en el contenido
+    const index = searchContent.indexOf(text);
+    if (index === -1) {
+      return { start: 0, end: 0 };
+    }
+
+    // Calcular líneas basándose en el contenido original
+    const textBefore = content.substring(0, Math.min(index, content.length));
+    const startLine = textBefore.split('\n').length - 1;
+    const endLine = startLine + text.split('\n').length - 1;
+
+    return { start: Math.max(0, startLine), end: Math.max(0, endLine) };
+  }, [enableLineMapping, content, processedContent]);
+
+  /**
+   * Helper para agregar data attributes de línea a un elemento
+   */
+  const addLineAttributes = useCallback((text: string, props: any, searchInProcessed = false) => {
+    if (!enableLineMapping) return props;
+
+    const lineRange = getLineRangeForText(text, searchInProcessed);
+    return {
+      ...props,
+      'data-line-start': lineRange.start,
+      'data-line-end': lineRange.end,
+    };
+  }, [enableLineMapping, getLineRangeForText]);
   
   // Crear mapas de referencias para acceso rápido durante el renderizado
   const referencesMap = new Map(
@@ -223,16 +286,68 @@ export default function MarkdownRenderer({
   // Componentes personalizados para ReactMarkdown (reutilizables para definiciones y teoremas)
   const markdownComponents = {
           // Estilos personalizados para elementos markdown
-          h1: ({ node, ...props }) => (
-            <h1 className="text-4xl font-bold text-text-primary mb-4 mt-8" {...props} />
-          ),
-          h2: ({ node, ...props }) => (
-            <h2 className="text-3xl font-bold text-text-primary mb-3 mt-6" {...props} />
-          ),
-          h3: ({ node, ...props }) => (
-            <h3 className="text-2xl font-semibold text-text-primary mb-2 mt-4" {...props} />
-          ),
+          h1: ({ node, children, ...props }: any) => {
+            const text = typeof children === 'string' 
+              ? children 
+              : Array.isArray(children) 
+                ? children.map((c: any) => typeof c === 'string' ? c : '').join('')
+                : '';
+            const lineProps = addLineAttributes(`# ${text}`, props);
+            return (
+              <h1 className="text-4xl font-bold text-text-primary mb-4 mt-8" {...lineProps}>
+                {children}
+              </h1>
+            );
+          },
+          h2: ({ node, children, ...props }: any) => {
+            // Buscar si este encabezado corresponde a una sección
+            const titleText = typeof children === 'string' 
+              ? children 
+              : Array.isArray(children) 
+                ? children.map((c: any) => typeof c === 'string' ? c : '').join('')
+                : '';
+            const section = sectionsMap.get(titleText.trim());
+            const id = section ? section.id : undefined;
+            
+            // Agregar data attributes para mapeo de líneas
+            const lineProps = addLineAttributes(`## ${titleText}`, props);
+            
+            return (
+              <h2
+                id={id}
+                className="text-3xl font-bold text-text-primary mb-3 mt-6 scroll-mt-20"
+                {...lineProps}
+              >
+                {children}
+              </h2>
+            );
+          },
+          h3: ({ node, children, ...props }: any) => {
+            // Buscar si este encabezado corresponde a una subsección
+            const titleText = typeof children === 'string' 
+              ? children 
+              : Array.isArray(children) 
+                ? children.map((c: any) => typeof c === 'string' ? c : '').join('')
+                : '';
+            const section = sectionsMap.get(titleText.trim());
+            const id = section ? section.id : undefined;
+            
+            // Agregar data attributes para mapeo de líneas
+            const lineProps = addLineAttributes(`### ${titleText}`, props);
+            
+            return (
+              <h3
+                id={id}
+                className="text-2xl font-semibold text-text-primary mb-2 mt-4 scroll-mt-20"
+                {...lineProps}
+              >
+                {children}
+              </h3>
+            );
+          },
           p: ({ node, children, ...props }: any) => {
+            let hasEmbeddedRef = false; // Flag para detectar referencias embebidas
+            
             // Procesar children para detectar referencias (ecuaciones e imágenes)
             const processChildren = (children: any): any => {
               if (typeof children === 'string') {
@@ -257,6 +372,11 @@ export default function MarkdownRenderer({
                   const anchorId = pathParts.length === 2 ? pathParts[1].trim() : pathParts[0].trim();
                   const postSlug = pathParts.length === 2 ? pathParts[0].trim() : undefined;
                   const embed = flag?.trim().toLowerCase() === 'embed';
+                  
+                  // Si hay una referencia embebida, marcar el flag
+                  if (embed) {
+                    hasEmbeddedRef = true;
+                  }
                   
                   if (refType === 'eq') {
                     parts.push(
@@ -337,44 +457,87 @@ export default function MarkdownRenderer({
             
             const processedChildren = processChildren(children);
             
+            // Extraer texto para mapeo de líneas
+            const text = typeof children === 'string' 
+              ? children 
+              : Array.isArray(children) 
+                ? children.map((c: any) => typeof c === 'string' ? c : '').join('')
+                : '';
+            const lineProps = addLineAttributes(text, props);
+            
+            const commonStyles = {
+              wordWrap: 'break-word' as const,
+              overflowWrap: 'break-word' as const,
+              wordBreak: 'break-word' as const,
+              whiteSpace: 'normal' as const,
+              maxWidth: '100%',
+            };
+            
+            // Si hay referencias embebidas, usar div en lugar de p (porque los divs no pueden estar dentro de p)
+            if (hasEmbeddedRef) {
+              return (
+                <div 
+                  className="text-text-secondary mb-4 leading-relaxed" 
+                  style={commonStyles}
+                  {...lineProps}
+                >
+                  {processedChildren}
+                </div>
+              );
+            }
+            
             return (
               <p 
                 className="text-text-secondary mb-4 leading-relaxed" 
-                style={{
-                  wordWrap: 'break-word',
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word',
-                  whiteSpace: 'normal',
-                  maxWidth: '100%',
-                }}
-                {...props}
+                style={commonStyles}
+                {...lineProps}
               >
                 {processedChildren}
               </p>
             );
           },
-          ul: ({ node, ...props }) => (
-            <ul 
-              className="list-disc list-inside mb-4 text-text-secondary space-y-2" 
-              style={{
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                wordBreak: 'break-word',
-              }}
-              {...props} 
-            />
-          ),
-          ol: ({ node, ...props }) => (
-            <ol 
-              className="list-decimal list-inside mb-4 text-text-secondary space-y-2" 
-              style={{
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-                wordBreak: 'break-word',
-              }}
-              {...props} 
-            />
-          ),
+          ul: ({ node, children, ...props }: any) => {
+            const text = typeof children === 'string' 
+              ? children 
+              : Array.isArray(children) 
+                ? children.map((c: any) => typeof c === 'string' ? c : '').join('')
+                : '';
+            const lineProps = addLineAttributes(text, props);
+            return (
+              <ul 
+                className="list-disc list-inside mb-4 text-text-secondary space-y-2" 
+                style={{
+                  wordWrap: 'break-word',
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-word',
+                }}
+                {...lineProps} 
+              >
+                {children}
+              </ul>
+            );
+          },
+          ol: ({ node, children, ...props }: any) => {
+            const text = typeof children === 'string' 
+              ? children 
+              : Array.isArray(children) 
+                ? children.map((c: any) => typeof c === 'string' ? c : '').join('')
+                : '';
+            const lineProps = addLineAttributes(text, props);
+            return (
+              <ol 
+                className="list-decimal list-inside mb-4 text-text-secondary space-y-2" 
+                style={{
+                  wordWrap: 'break-word',
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-word',
+                }}
+                {...lineProps} 
+              >
+                {children}
+              </ol>
+            );
+          },
           li: ({ node, ...props }) => (
             <li 
               className="ml-4" 
