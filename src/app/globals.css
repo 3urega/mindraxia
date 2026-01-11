@@ -241,6 +241,45 @@ select option:hover {
   background-color: var(--color-space-secondary) !important;
 }
 
+/* Estilos para resaltado de texto */
+.highlight-yellow {
+  background-color: #fef08a !important; /* Amarillo pastel */
+  color: inherit;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.highlight-pink {
+  background-color: #fce7f3 !important; /* Rosa pastel */
+  color: inherit;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Ajustes para tema oscuro */
+[data-theme="dark"] .highlight-yellow,
+:root:not([data-theme]) .highlight-yellow {
+  background-color: #fbbf24 !important; /* Amarillo más visible en oscuro */
+  color: #0a0a0f;
+}
+
+[data-theme="dark"] .highlight-pink,
+:root:not([data-theme]) .highlight-pink {
+  background-color: #f472b6 !important; /* Rosa más visible en oscuro */
+  color: #0a0a0f;
+}
+
+/* Ajustes para tema claro */
+[data-theme="light"] .highlight-yellow {
+  background-color: #fef08a !important;
+  color: #0f172a;
+}
+
+[data-theme="light"] .highlight-pink {
+  background-color: #fce7f3 !important;
+  color: #0f172a;
+}
+
 /* Estilos para sincronización editor-preview */
 .editor-sync-highlight {
   position: relative;

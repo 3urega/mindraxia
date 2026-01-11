@@ -173,6 +173,11 @@ export default function MarkdownRenderer({
   processedContent = preprocessTheoremAnchors(processedContent);
   processedContent = preprocessProofAnchors(processedContent);
   processedContent = preprocessExpandableSections(processedContent);
+  
+  // Preprocesar resaltados de texto: ==texto== para amarillo, ::texto:: para rosa
+  // Usar placeholders especiales que luego procesaremos en el componente
+  processedContent = processedContent.replace(/==([^=]+)==/g, '{{HIGHLIGHT_YELLOW_START}}$1{{HIGHLIGHT_YELLOW_END}}');
+  processedContent = processedContent.replace(/::([^:]+)::/g, '{{HIGHLIGHT_PINK_START}}$1{{HIGHLIGHT_PINK_END}}');
 
   /**
    * Calcula las líneas del markdown original que corresponden a un fragmento de texto
@@ -348,102 +353,80 @@ export default function MarkdownRenderer({
           p: ({ node, children, ...props }: any) => {
             let hasEmbeddedRef = false; // Flag para detectar referencias embebidas
             
-            // Procesar children para detectar referencias (ecuaciones e imágenes)
+            // Procesar children para detectar referencias (ecuaciones e imágenes) y resaltados
             const processChildren = (children: any): any => {
               if (typeof children === 'string') {
-                // Buscar referencias en el texto (ecuaciones e imágenes)
-                const parts: any[] = [];
-                let lastIndex = 0;
-                let match;
+                // Primero procesar resaltados
+                let processedText = children;
                 
-                // Regex combinado para referencias de ecuaciones, imágenes, definiciones, teoremas y demostraciones
-                // Captura el tercer parámetro opcional (embed)
-                const refRegex = /\{\{(eq|img|def|thm|prf):([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
+                // Procesar resaltado amarillo
+                processedText = processedText.replace(
+                  /\{\{HIGHLIGHT_YELLOW_START\}\}([^{]+)\{\{HIGHLIGHT_YELLOW_END\}\}/g,
+                  (match, text) => {
+                    return `<mark class="highlight-yellow">${text}</mark>`;
+                  }
+                );
                 
-                while ((match = refRegex.exec(children)) !== null) {
-                  // Añadir texto antes de la referencia
-                  if (match.index > lastIndex) {
-                    parts.push(children.substring(lastIndex, match.index));
+                // Procesar resaltado rosa
+                processedText = processedText.replace(
+                  /\{\{HIGHLIGHT_PINK_START\}\}([^{]+)\{\{HIGHLIGHT_PINK_END\}\}/g,
+                  (match, text) => {
+                    return `<mark class="highlight-pink">${text}</mark>`;
+                  }
+                );
+                
+                // Si hay HTML (resaltados), necesitamos procesarlo de forma especial
+                if (processedText !== children && processedText.includes('<mark')) {
+                  // Dividir el texto en partes HTML y texto normal
+                  const parts: any[] = [];
+                  const htmlRegex = /<mark class="(highlight-yellow|highlight-pink)">([^<]+)<\/mark>/g;
+                  let lastIndex = 0;
+                  let match;
+                  
+                  while ((match = htmlRegex.exec(processedText)) !== null) {
+                    // Añadir texto antes del resaltado
+                    if (match.index > lastIndex) {
+                      const beforeText = processedText.substring(lastIndex, match.index);
+                      if (beforeText) {
+                        parts.push(beforeText);
+                      }
+                    }
+                    
+                    // Añadir el resaltado
+                    const highlightClass = match[1];
+                    const highlightText = match[2];
+                    parts.push(
+                      <mark key={`highlight-${match.index}`} className={highlightClass}>
+                        {highlightText}
+                      </mark>
+                    );
+                    
+                    lastIndex = match.index + match[0].length;
                   }
                   
-                  // Procesar la referencia
-                  const [, refType, path, linkText, flag] = match;
-                  const pathParts = path.split('/');
-                  const anchorId = pathParts.length === 2 ? pathParts[1].trim() : pathParts[0].trim();
-                  const postSlug = pathParts.length === 2 ? pathParts[0].trim() : undefined;
-                  const embed = flag?.trim().toLowerCase() === 'embed';
-                  
-                  // Si hay una referencia embebida, marcar el flag
-                  if (embed) {
-                    hasEmbeddedRef = true;
+                  // Añadir texto restante
+                  if (lastIndex < processedText.length) {
+                    const remainingText = processedText.substring(lastIndex);
+                    if (remainingText) {
+                      parts.push(remainingText);
+                    }
                   }
                   
-                  if (refType === 'eq') {
-                    parts.push(
-                      <EquationReference
-                        key={`eq-ref-${match.index}`}
-                        anchorId={anchorId}
-                        postSlug={postSlug}
-                        linkText={linkText.trim()}
-                        currentSlug={currentSlug}
-                        embed={embed}
-                      />
-                    );
-                  } else if (refType === 'img') {
-                    parts.push(
-                      <ImageReference
-                        key={`img-ref-${match.index}`}
-                        anchorId={anchorId}
-                        postSlug={postSlug}
-                        linkText={linkText.trim()}
-                        currentSlug={currentSlug}
-                        embed={embed}
-                      />
-                    );
-                  } else if (refType === 'def') {
-                    parts.push(
-                      <DefinitionReference
-                        key={`def-ref-${match.index}`}
-                        anchorId={anchorId}
-                        postSlug={postSlug}
-                        linkText={linkText.trim()}
-                        currentSlug={currentSlug}
-                        embed={embed}
-                      />
-                    );
-                  } else if (refType === 'thm') {
-                    parts.push(
-                      <TheoremReference
-                        key={`thm-ref-${match.index}`}
-                        anchorId={anchorId}
-                        postSlug={postSlug}
-                        linkText={linkText.trim()}
-                        currentSlug={currentSlug}
-                        embed={embed}
-                      />
-                    );
-                  } else if (refType === 'prf') {
-                    parts.push(
-                      <ProofReference
-                        key={`prf-ref-${match.index}`}
-                        anchorId={anchorId}
-                        postSlug={postSlug}
-                        linkText={linkText.trim()}
-                        currentSlug={currentSlug}
-                        embed={embed}
-                      />
-                    );
-                  }
+                  // Ahora procesar referencias en cada parte de texto
+                  const finalParts: any[] = [];
+                  parts.forEach((part, partIndex) => {
+                    if (typeof part === 'string') {
+                      finalParts.push(...processReferencesInText(part, partIndex));
+                    } else {
+                      finalParts.push(part);
+                    }
+                  });
                   
-                  lastIndex = match.index + match[0].length;
+                  return finalParts.length > 0 ? finalParts : processedText;
                 }
                 
-                // Añadir texto restante
-                if (lastIndex < children.length) {
-                  parts.push(children.substring(lastIndex));
-                }
-                
-                return parts.length > 0 ? parts : children;
+                // Si no hay resaltados, procesar referencias normalmente
+                return processReferencesInText(processedText, 0);
               }
               
               if (Array.isArray(children)) {
@@ -453,6 +436,101 @@ export default function MarkdownRenderer({
               }
               
               return children;
+            };
+            
+            // Función helper para procesar referencias en texto
+            const processReferencesInText = (text: string, baseIndex: number): any[] => {
+              const parts: any[] = [];
+              let lastIndex = 0;
+              let match;
+              
+              // Regex combinado para referencias de ecuaciones, imágenes, definiciones, teoremas y demostraciones
+              const refRegex = /\{\{(eq|img|def|thm|prf):([^}|]+)\|([^}|]+)(?:\|([^}]+))?\}\}/g;
+              
+              while ((match = refRegex.exec(text)) !== null) {
+                // Añadir texto antes de la referencia
+                if (match.index > lastIndex) {
+                  parts.push(text.substring(lastIndex, match.index));
+                }
+                
+                // Procesar la referencia
+                const [, refType, path, linkText, flag] = match;
+                const pathParts = path.split('/');
+                const anchorId = pathParts.length === 2 ? pathParts[1].trim() : pathParts[0].trim();
+                const postSlug = pathParts.length === 2 ? pathParts[0].trim() : undefined;
+                const embed = flag?.trim().toLowerCase() === 'embed';
+                
+                // Si hay una referencia embebida, marcar el flag
+                if (embed) {
+                  hasEmbeddedRef = true;
+                }
+                
+                if (refType === 'eq') {
+                  parts.push(
+                    <EquationReference
+                      key={`eq-ref-${baseIndex}-${match.index}`}
+                      anchorId={anchorId}
+                      postSlug={postSlug}
+                      linkText={linkText.trim()}
+                      currentSlug={currentSlug}
+                      embed={embed}
+                    />
+                  );
+                } else if (refType === 'img') {
+                  parts.push(
+                    <ImageReference
+                      key={`img-ref-${baseIndex}-${match.index}`}
+                      anchorId={anchorId}
+                      postSlug={postSlug}
+                      linkText={linkText.trim()}
+                      currentSlug={currentSlug}
+                      embed={embed}
+                    />
+                  );
+                } else if (refType === 'def') {
+                  parts.push(
+                    <DefinitionReference
+                      key={`def-ref-${baseIndex}-${match.index}`}
+                      anchorId={anchorId}
+                      postSlug={postSlug}
+                      linkText={linkText.trim()}
+                      currentSlug={currentSlug}
+                      embed={embed}
+                    />
+                  );
+                } else if (refType === 'thm') {
+                  parts.push(
+                    <TheoremReference
+                      key={`thm-ref-${baseIndex}-${match.index}`}
+                      anchorId={anchorId}
+                      postSlug={postSlug}
+                      linkText={linkText.trim()}
+                      currentSlug={currentSlug}
+                      embed={embed}
+                    />
+                  );
+                } else if (refType === 'prf') {
+                  parts.push(
+                    <ProofReference
+                      key={`prf-ref-${baseIndex}-${match.index}`}
+                      anchorId={anchorId}
+                      postSlug={postSlug}
+                      linkText={linkText.trim()}
+                      currentSlug={currentSlug}
+                      embed={embed}
+                    />
+                  );
+                }
+                
+                lastIndex = match.index + match[0].length;
+              }
+              
+              // Añadir texto restante
+              if (lastIndex < text.length) {
+                parts.push(text.substring(lastIndex));
+              }
+              
+              return parts.length > 0 ? parts : [text];
             };
             
             const processedChildren = processChildren(children);
@@ -1047,6 +1125,10 @@ export default function MarkdownRenderer({
           em: ({ node, ...props }) => (
             <em className="italic" {...props} />
           ),
+          mark: ({ node, className, ...props }: any) => {
+            // Renderizar mark con las clases de resaltado
+            return <mark className={className} {...props} />;
+          },
         };
 
   return (

@@ -110,6 +110,8 @@ export default function MarkdownEditor({
   const applyUnderline = () => applyFormat('<u>', '</u>', 'texto subrayado');
   const applyStrikethrough = () => applyFormat('~~', '~~', 'texto tachado');
   const applyCode = () => applyFormat('`', '`', 'código');
+  const applyYellowHighlight = () => applyFormat('==', '==', 'texto resaltado');
+  const applyPinkHighlight = () => applyFormat('::', '::', 'texto resaltado');
   const applyCodeBlock = () => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -1418,7 +1420,7 @@ export default function MarkdownEditor({
 
       {/* Barra de herramientas de formato */}
       {(view === 'edit' || view === 'split') && (
-        <div className="mb-3 p-2 rounded-lg border flex flex-wrap gap-1 items-center" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+        <div className="sticky top-0 z-10 mb-3 p-2 rounded-lg border flex flex-wrap gap-1 items-center backdrop-blur-sm" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.95)' }}>
           {/* Formato de texto */}
           <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <button
@@ -1452,6 +1454,24 @@ export default function MarkdownEditor({
               title="Tachado"
             >
               <span style={{ textDecoration: 'line-through' }}>S</span>
+            </button>
+            <button
+              type="button"
+              onClick={applyYellowHighlight}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Resaltar en amarillo"
+              style={{ backgroundColor: 'rgba(251, 191, 36, 0.3)' }}
+            >
+              <span style={{ backgroundColor: '#fbbf24', padding: '2px 4px', borderRadius: '2px' }}>🟡</span>
+            </button>
+            <button
+              type="button"
+              onClick={applyPinkHighlight}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Resaltar en rosa pastel"
+              style={{ backgroundColor: 'rgba(244, 114, 182, 0.3)' }}
+            >
+              <span style={{ backgroundColor: '#f472b6', padding: '2px 4px', borderRadius: '2px' }}>🌸</span>
             </button>
           </div>
 
@@ -1534,16 +1554,16 @@ export default function MarkdownEditor({
       )}
 
       {/* Contenedor del editor */}
-      <div className="flex gap-4" style={{ minHeight: '500px' }}>
+      <div className="flex gap-4" style={{ minHeight: '500px', height: '100%' }}>
         {/* Editor */}
         {(view === 'edit' || view === 'split') && (
-          <div className={`${view === 'split' ? 'w-1/2' : 'w-full'}`}>
+          <div className={`${view === 'split' ? 'w-1/2' : 'w-full'} flex flex-col`}>
             <textarea
               ref={textareaRef}
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
-              className="w-full h-full min-h-[500px] p-4 rounded-lg border bg-space-primary text-text-primary placeholder-text-muted font-mono text-sm resize-none focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
+              className="w-full flex-1 min-h-[500px] p-4 rounded-lg border bg-space-primary text-text-primary placeholder-text-muted font-mono text-sm resize-none focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 overflow-y-auto"
               style={{
                 borderColor: 'var(--border-glow)',
               }}
@@ -1557,13 +1577,14 @@ export default function MarkdownEditor({
             ref={previewContainerRef}
             className={`${
               view === 'split' ? 'w-1/2' : 'w-full'
-            } p-4 rounded-lg border overflow-y-auto`}
+            } p-4 rounded-lg border overflow-y-auto overflow-x-hidden flex flex-col`}
             style={{
               borderColor: 'var(--border-glow)',
               backgroundColor: 'rgba(26, 26, 46, 0.3)',
               minHeight: '500px',
-              overflowX: 'hidden',
+              maxHeight: '100%',
               maxWidth: '100%',
+              position: 'relative',
             }}
           >
             {value ? (

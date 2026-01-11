@@ -92,45 +92,47 @@ export function useEditorPreviewSync({
     // Agregar highlight al elemento actual
     element.classList.add('editor-sync-highlight');
 
-    // Calcular posición del elemento relativa al contenedor usando getBoundingClientRect
-    const containerRect = previewContainer.getBoundingClientRect();
-    const elementRect = element.getBoundingClientRect();
+    // Calcular posición del elemento relativa al contenedor
+    // Usar offsetTop que da la posición relativa al offsetParent (el contenedor con scroll)
+    let elementOffsetTop = 0;
+    let currentElement: HTMLElement | null = element;
     
-    // Calcular la posición actual del elemento relativa al viewport del contenedor
-    const elementTopRelativeToContainer = elementRect.top - containerRect.top;
+    // Sumar todos los offsetTop hasta llegar al contenedor del preview
+    while (currentElement && currentElement !== previewContainer) {
+      elementOffsetTop += currentElement.offsetTop;
+      currentElement = currentElement.offsetParent as HTMLElement | null;
+    }
     
-    // Obtener el scroll actual del contenedor
-    const currentScrollTop = previewContainer.scrollTop;
-    
-    // Calcular la posición absoluta del elemento desde el top del contenido (no del viewport)
-    const elementAbsoluteTop = currentScrollTop + elementTopRelativeToContainer;
+    // Si offsetTop no funciona bien, usar getBoundingClientRect como fallback
+    if (elementOffsetTop === 0 || elementOffsetTop > previewContainer.scrollHeight) {
+      const containerRect = previewContainer.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const elementTopRelativeToContainer = elementRect.top - containerRect.top;
+      elementOffsetTop = previewContainer.scrollTop + elementTopRelativeToContainer;
+    }
     
     // Calcular la altura del contenedor visible
     const containerHeight = previewContainer.clientHeight;
-    const elementHeight = elementRect.height;
+    const elementHeight = element.offsetHeight || element.getBoundingClientRect().height;
     
-    // Calcular el scroll necesario para centrar el elemento
-    // Queremos que el elemento quede en el centro del viewport del contenedor
-    const targetScrollTop = elementAbsoluteTop - (containerHeight / 2) + (elementHeight / 2);
+    // Calcular el scroll necesario para centrar el elemento en el contenedor
+    const targetScrollTop = elementOffsetTop - (containerHeight / 2) + (elementHeight / 2);
     
     // Asegurar que el scroll no sea negativo y no exceda el máximo
-    const maxScroll = previewContainer.scrollHeight - containerHeight;
+    const maxScroll = Math.max(0, previewContainer.scrollHeight - containerHeight);
     const finalScrollTop = Math.max(0, Math.min(targetScrollTop, maxScroll));
 
-    // Hacer scroll solo dentro del contenedor del preview
-    // Usar requestAnimationFrame para asegurar que el DOM esté actualizado
-    requestAnimationFrame(() => {
-      isScrollingRef.current = true;
-      previewContainer.scrollTo({
-        top: finalScrollTop,
-        behavior: 'smooth',
-      });
-
-      // Resetear flag después de la animación
-      setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 500);
+    // Hacer scroll SOLO dentro del contenedor del preview (no en la página)
+    isScrollingRef.current = true;
+    previewContainer.scrollTo({
+      top: finalScrollTop,
+      behavior: 'smooth',
     });
+
+    // Resetear flag después de la animación
+    setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 500);
   }, [enabled, findElementForLine, previewContainerRef]);
 
   /**
