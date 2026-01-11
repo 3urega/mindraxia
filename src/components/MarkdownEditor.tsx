@@ -35,6 +35,33 @@ export default function MarkdownEditor({
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [toolbarTop, setToolbarTop] = useState(0);
+
+  // Calcular la posición de la barra de herramientas basada en la altura del header
+  useEffect(() => {
+    const calculateToolbarPosition = () => {
+      // Buscar el header del admin (sticky)
+      const adminHeader = document.querySelector('header.sticky');
+      if (adminHeader) {
+        const headerHeight = adminHeader.getBoundingClientRect().height;
+        setToolbarTop(headerHeight);
+      } else {
+        // Si no hay header admin, usar 0 (para páginas públicas)
+        setToolbarTop(0);
+      }
+    };
+
+    calculateToolbarPosition();
+    window.addEventListener('resize', calculateToolbarPosition);
+    
+    // Recalcular después de un pequeño delay para asegurar que el DOM esté listo
+    const timeout = setTimeout(calculateToolbarPosition, 100);
+
+    return () => {
+      window.removeEventListener('resize', calculateToolbarPosition);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   // Hook de sincronización editor-preview (solo en modo split)
   useEditorPreviewSync({
@@ -1163,29 +1190,6 @@ export default function MarkdownEditor({
         )}
       </div>
 
-      {/* Secciones */}
-      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-        <span className="text-xs text-text-muted self-center mr-2 font-semibold">Secciones:</span>
-        <button
-          type="button"
-          onClick={insertSection}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar sección principal (aparecerá en el índice)"
-        >
-          📑 Sección
-        </button>
-        <button
-          type="button"
-          onClick={insertSubsection}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar subsección (aparecerá en el índice dentro de una sección)"
-        >
-          📄 Subsección
-        </button>
-      </div>
-
       {/* Expresiones Matemáticas Comunes */}
       <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
         <span className="text-xs text-text-muted self-center mr-2 font-semibold w-full mb-2">Expresiones Comunes:</span>
@@ -1420,7 +1424,14 @@ export default function MarkdownEditor({
 
       {/* Barra de herramientas de formato */}
       {(view === 'edit' || view === 'split') && (
-        <div className="sticky top-0 z-10 mb-3 p-2 rounded-lg border flex flex-wrap gap-1 items-center backdrop-blur-sm" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.95)' }}>
+        <div 
+          className="sticky z-40 mb-3 p-2 rounded-lg border flex flex-wrap gap-1 items-center backdrop-blur-sm transition-all" 
+          style={{ 
+            borderColor: 'var(--border-glow)', 
+            backgroundColor: 'rgba(26, 26, 46, 0.95)',
+            top: `${toolbarTop}px`
+          }}
+        >
           {/* Formato de texto */}
           <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <button
@@ -1475,31 +1486,23 @@ export default function MarkdownEditor({
             </button>
           </div>
 
-          {/* Encabezados */}
+          {/* Secciones */}
           <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <button
               type="button"
-              onClick={() => applyHeading(1)}
-              className="px-2 py-1.5 text-xs font-semibold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Encabezado 1"
+              onClick={insertSection}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Insertar sección principal (aparecerá en el índice)"
             >
-              H1
+              📑 Sección
             </button>
             <button
               type="button"
-              onClick={() => applyHeading(2)}
-              className="px-2 py-1.5 text-xs font-semibold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Encabezado 2"
+              onClick={insertSubsection}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
+              title="Insertar subsección (aparecerá en el índice dentro de una sección)"
             >
-              H2
-            </button>
-            <button
-              type="button"
-              onClick={() => applyHeading(3)}
-              className="px-2 py-1.5 text-xs font-semibold rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Encabezado 3"
-            >
-              H3
+              📄 Subsección
             </button>
           </div>
 
@@ -1760,4 +1763,5 @@ export default function MarkdownEditor({
     </div>
   );
 }
+
 

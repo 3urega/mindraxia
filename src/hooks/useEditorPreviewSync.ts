@@ -3,8 +3,8 @@ import { useEffect, useRef, useCallback } from 'react';
 interface UseEditorPreviewSyncOptions {
   enabled: boolean; // Solo activar en modo split
   markdownContent: string;
-  previewContainerRef: React.RefObject<HTMLDivElement>;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  previewContainerRef: React.RefObject<HTMLDivElement | null>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }
 
 /**
