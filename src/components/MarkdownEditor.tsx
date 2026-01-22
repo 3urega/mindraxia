@@ -807,6 +807,25 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar desplegable (expand)
+  const insertExpandable = () => {
+    const template = `:::expand{Título del desplegable}\nContenido que se mostrará cuando se expanda\n:::\n`;
+    insertText(template);
+    // Mover cursor al título del desplegable para fácil edición
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de :::expand{
+        const newPos = startPos + 13;
+        // Seleccionar "Título del desplegable" para fácil reemplazo
+        const endPos = newPos + 23;
+        textarea.setSelectionRange(newPos, endPos);
+      }
+    }, 10);
+  };
+
   // Insertar plantilla de imagen con ancla
   const insertImageAnchor = () => {
     const template = '![texto alternativo](url-de-la-imagen){#img:}';
@@ -1486,26 +1505,6 @@ export default function MarkdownEditor({
             </button>
           </div>
 
-          {/* Secciones */}
-          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
-            <button
-              type="button"
-              onClick={insertSection}
-              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Insertar sección principal (aparecerá en el índice)"
-            >
-              📑 Sección
-            </button>
-            <button
-              type="button"
-              onClick={insertSubsection}
-              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Insertar subsección (aparecerá en el índice dentro de una sección)"
-            >
-              📄 Subsección
-            </button>
-          </div>
-
           {/* Listas */}
           <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <button
@@ -1526,8 +1525,8 @@ export default function MarkdownEditor({
             </button>
           </div>
 
-          {/* Enlace y código */}
-          <div className="flex gap-1 items-center">
+          {/* Enlace */}
+          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <button
               type="button"
               onClick={applyLink}
@@ -1536,22 +1535,68 @@ export default function MarkdownEditor({
             >
               🔗 Enlace
             </button>
-            <button
-              type="button"
-              onClick={applyCode}
-              className="px-3 py-1.5 text-xs font-mono rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Código inline"
+          </div>
+
+          {/* Anclas */}
+          <div className="flex gap-1 items-center">
+            <select
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === 'eq-anchor') insertAnchoredEquation();
+                else if (value === 'eq-anchor-desc') insertAnchoredEquationWithDescription();
+                else if (value === 'def-anchor') insertAnchoredDefinition();
+                else if (value === 'def-anchor-desc') insertAnchoredDefinitionWithDescription();
+                else if (value === 'thm-anchor') insertAnchoredTheorem();
+                else if (value === 'thm-anchor-desc') insertAnchoredTheoremWithDescription();
+                else if (value === 'prf-anchor') insertAnchoredProof();
+                else if (value === 'prf-anchor-desc') insertAnchoredProofWithDescription();
+                e.target.value = '';
+              }}
+              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+              style={{ 
+                borderColor: 'var(--border-glow)',
+                backgroundColor: 'rgb(26, 26, 46)',
+                color: 'var(--text-secondary)'
+              }}
+              defaultValue=""
+              title="Insertar elemento con ancla"
             >
-              `código`
-            </button>
-            <button
-              type="button"
-              onClick={applyCodeBlock}
-              className="px-3 py-1.5 text-xs font-mono rounded transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-              title="Bloque de código"
+              <option value="" disabled>⚓ Anclas...</option>
+              <option value="eq-anchor">Ecuación con Ancla</option>
+              <option value="eq-anchor-desc">Ecuación + Descripción</option>
+              <option value="def-anchor">Definición con Ancla</option>
+              <option value="def-anchor-desc">Definición + Descripción</option>
+              <option value="thm-anchor">Teorema con Ancla</option>
+              <option value="thm-anchor-desc">Teorema + Descripción</option>
+              <option value="prf-anchor">Demostración con Ancla</option>
+              <option value="prf-anchor-desc">Demostración + Descripción</option>
+            </select>
+          </div>
+
+          {/* Estructura */}
+          <div className="flex gap-1 items-center">
+            <select
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === 'expandable') insertExpandable();
+                else if (value === 'section') insertSection();
+                else if (value === 'subsection') insertSubsection();
+                e.target.value = '';
+              }}
+              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+              style={{ 
+                borderColor: 'var(--border-glow)',
+                backgroundColor: 'rgb(26, 26, 46)',
+                color: 'var(--text-secondary)'
+              }}
+              defaultValue=""
+              title="Insertar elemento de estructura"
             >
-              ```bloque```
-            </button>
+              <option value="" disabled>📋 Estructura...</option>
+              <option value="expandable">📂 Desplegable</option>
+              <option value="section">📑 Sección</option>
+              <option value="subsection">📄 Subsección</option>
+            </select>
           </div>
         </div>
       )}
