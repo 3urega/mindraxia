@@ -81,8 +81,7 @@ export default function NewPostPage() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const savePost = async (shouldRedirect: boolean = true) => {
     setError('');
     setLoading(true);
 
@@ -97,19 +96,19 @@ export default function NewPostPage() {
       if (!title || title.length < 3) {
         setError('El título debe tener al menos 3 caracteres');
         setLoading(false);
-        return;
+        return false;
       }
 
       if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
         setError('El slug solo puede contener letras minúsculas, números y guiones');
         setLoading(false);
-        return;
+        return false;
       }
 
       if (!content || content.length < 10) {
         setError('El contenido debe tener al menos 10 caracteres');
         setLoading(false);
-        return;
+        return false;
       }
 
       const response = await fetch('/api/posts', {
@@ -135,17 +134,44 @@ export default function NewPostPage() {
       if (!response.ok) {
         setError(data.message || 'Error al crear el post');
         setLoading(false);
-        return;
+        return false;
       }
 
-      // Redirigir a la lista de posts
-      router.push('/admin/posts');
-      router.refresh();
+      if (shouldRedirect) {
+        // Redirigir a la lista de posts
+        router.push('/admin/posts');
+        router.refresh();
+      } else {
+        // Si se guardó exitosamente y no redirigimos, redirigir a la página de edición
+        if (data && data.id) {
+          router.push(`/admin/posts/${data.id}`);
+          router.refresh();
+        }
+      }
+
+      setLoading(false);
+      return true;
     } catch (error) {
       console.error('Error creating post:', error);
       setError('Error de conexión. Por favor intenta de nuevo.');
       setLoading(false);
+      return false;
     }
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await savePost(true);
+  };
+
+  // Guardar y redirigir (equivalente a "Guardar Borrador" / "Publicar Post")
+  const handleSave = async () => {
+    await savePost(true);
+  };
+
+  // Guardar sin redirigir (equivalente a "Guardar y continuar")
+  const handleSaveAndContinue = async () => {
+    await savePost(false);
   };
 
   return (
@@ -280,6 +306,9 @@ export default function NewPostPage() {
             value={content}
             onChange={setContent}
             placeholder="Escribe tu contenido en markdown. Usa $...$ para fórmulas inline y $$...$$ para fórmulas en bloque."
+            onSave={handleSave}
+            onSaveAndContinue={handleSaveAndContinue}
+            saving={loading}
           />
           <p className="mt-2 text-xs text-text-muted">
             Soporta markdown completo y fórmulas matemáticas LaTeX. Usa los botones de acción rápida para insertar fórmulas. 
@@ -352,11 +381,23 @@ export default function NewPostPage() {
         {/* Botones */}
         <div className="flex gap-4 pt-4">
           <button
-            type="submit"
+            type="button"
+            onClick={handleSave}
             disabled={loading}
             className="px-6 py-3 rounded-lg bg-star-cyan text-space-dark font-medium transition-all hover:bg-star-cyan/90 focus:outline-none focus:ring-2 focus:ring-star-cyan/50 disabled:opacity-50 disabled:cursor-not-allowed glow-cyan"
           >
             {loading ? 'Guardando...' : published ? 'Publicar Post' : 'Guardar Borrador'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAndContinue}
+            disabled={loading}
+            className="px-6 py-3 rounded-lg border bg-space-primary text-text-primary font-medium transition-colors hover:bg-space-secondary focus:outline-none focus:ring-2 focus:ring-star-cyan/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              borderColor: 'var(--border-glow)',
+            }}
+          >
+            {loading ? 'Guardando...' : 'Guardar y continuar'}
           </button>
           <button
             type="button"

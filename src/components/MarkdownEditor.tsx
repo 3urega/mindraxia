@@ -12,6 +12,9 @@ interface MarkdownEditorProps {
   placeholder?: string;
   postId?: string; // ID del post para obtener ecuaciones disponibles
   currentPostSlug?: string; // Slug del post actual para referencias relativas
+  onSave?: () => void; // Función para guardar
+  onSaveAndContinue?: () => void; // Función para guardar y continuar
+  saving?: boolean; // Estado de guardado
 }
 
 export default function MarkdownEditor({
@@ -20,6 +23,9 @@ export default function MarkdownEditor({
   placeholder = 'Escribe tu contenido en markdown...',
   postId,
   currentPostSlug,
+  onSave,
+  onSaveAndContinue,
+  saving = false,
 }: MarkdownEditorProps) {
   const [view, setView] = useState<'split' | 'edit' | 'preview'>('split');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1355,6 +1361,47 @@ export default function MarkdownEditor({
             <span className="text-lg font-semibold">🔗</span>
             <span className="ml-2 text-sm font-medium hidden sm:inline">Referencias</span>
           </button>
+
+          {/* Botones de guardar */}
+          {onSave && onSaveAndContinue && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSave();
+                }}
+                disabled={saving}
+                className="px-4 py-3 rounded-lg bg-star-cyan text-space-dark font-medium transition-all hover:bg-star-cyan/90 focus:outline-none focus:ring-2 focus:ring-star-cyan/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg animate-in fade-in slide-in-from-right duration-300"
+                title="Guardar cambios"
+              >
+                <span className="text-sm font-semibold">{saving ? '⏳' : '💾'}</span>
+                <span className="ml-2 text-sm font-medium hidden sm:inline">
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSaveAndContinue();
+                }}
+                disabled={saving}
+                className="px-4 py-3 rounded-lg border bg-space-primary text-text-primary font-medium transition-colors hover:bg-space-secondary focus:outline-none focus:ring-2 focus:ring-star-cyan/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg animate-in fade-in slide-in-from-right duration-300"
+                style={{
+                  borderColor: 'var(--border-glow)',
+                }}
+                title="Guardar y continuar editando"
+              >
+                <span className="text-sm font-semibold">{saving ? '⏳' : '💾'}</span>
+                <span className="ml-2 text-sm font-medium hidden sm:inline">
+                  {saving ? 'Guardando...' : 'Guardar y continuar'}
+                </span>
+              </button>
+            </>
+          )}
         </div>
       )}
 

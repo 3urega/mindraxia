@@ -204,6 +204,12 @@ export default function EditPostPage() {
     await savePost(true);
   };
 
+  // Guardar y redirigir (equivalente a "Guardar Cambios")
+  const handleSave = async () => {
+    await savePost(true);
+  };
+
+  // Guardar sin redirigir (equivalente a "Guardar y continuar")
   const handleSaveAndContinue = async () => {
     await savePost(false);
   };
@@ -426,6 +432,9 @@ export default function EditPostPage() {
             placeholder="Escribe tu contenido en markdown. Usa $...$ para fórmulas inline y $$...$$ para fórmulas en bloque."
             postId={postId}
             currentPostSlug={slug}
+            onSave={handleSave}
+            onSaveAndContinue={handleSaveAndContinue}
+            saving={saving}
           />
         </div>
 
@@ -491,7 +500,8 @@ export default function EditPostPage() {
         {/* Botones */}
         <div className="flex gap-4 pt-4">
           <button
-            type="submit"
+            type="button"
+            onClick={handleSave}
             disabled={saving}
             className="px-6 py-3 rounded-lg bg-star-cyan text-space-dark font-medium transition-all hover:bg-star-cyan/90 focus:outline-none focus:ring-2 focus:ring-star-cyan/50 disabled:opacity-50 disabled:cursor-not-allowed glow-cyan"
           >
