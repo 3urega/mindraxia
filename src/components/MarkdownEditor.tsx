@@ -832,6 +832,136 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar gráfico Plotly 3D básico
+  const insertPlotly3D = () => {
+    const template = `\`\`\`plotly3d
+{
+  "data": [{
+    "type": "scatter3d",
+    "mode": "markers",
+    "x": [1, 2, 3],
+    "y": [1, 2, 3],
+    "z": [1, 2, 3],
+    "marker": {
+      "size": 5,
+      "color": "red"
+    }
+  }],
+  "layout": {
+    "scene": {
+      "xaxis": {"title": "X"},
+      "yaxis": {"title": "Y"},
+      "zaxis": {"title": "Z"}
+    },
+    "title": "Gráfico 3D"
+  }
+}
+\`\`\`
+`;
+    insertText(template);
+    // Mover cursor al inicio del JSON para fácil edición
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de ```plotly3d\n
+        const newPos = startPos + 13;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+    }, 10);
+  };
+
+  // Insertar vector 3D con Plotly
+  const insertPlotly3DVector = () => {
+    const template = `\`\`\`plotly3d
+{
+  "data": [{
+    "type": "scatter3d",
+    "mode": "lines+markers",
+    "x": [0, 1],
+    "y": [0, 1],
+    "z": [0, 1],
+    "line": {
+      "color": "red",
+      "width": 5
+    },
+    "marker": {
+      "size": 5,
+      "color": "red"
+    },
+    "name": "Vector"
+  }],
+  "layout": {
+    "scene": {
+      "xaxis": {"title": "X", "range": [-1, 2]},
+      "yaxis": {"title": "Y", "range": [-1, 2]},
+      "zaxis": {"title": "Z", "range": [-1, 2]},
+      "camera": {
+        "eye": {"x": 1.5, "y": 1.5, "z": 1.5}
+      }
+    },
+    "title": "Vector 3D"
+  }
+}
+\`\`\`
+`;
+    insertText(template);
+    // Mover cursor a las coordenadas del vector
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición en "x": [0, 1]
+        const newPos = startPos + template.indexOf('"x": [0, 1]') + 6;
+        textarea.setSelectionRange(newPos, newPos + 5); // Seleccionar [0, 1]
+      }
+    }, 10);
+  };
+
+  // Insertar gráfico Plotly 3D con ancla
+  const insertPlotly3DWithAnchor = () => {
+    const template = `\`\`\`plotly3d-anchor:grafico-ejemplo
+{
+  "data": [{
+    "type": "scatter3d",
+    "mode": "markers",
+    "x": [1, 2, 3],
+    "y": [1, 2, 3],
+    "z": [1, 2, 3],
+    "marker": {
+      "size": 5,
+      "color": "red"
+    }
+  }],
+  "layout": {
+    "scene": {
+      "xaxis": {"title": "X"},
+      "yaxis": {"title": "Y"},
+      "zaxis": {"title": "Z"}
+    },
+    "title": "Gráfico 3D"
+  }
+}
+\`\`\`
+`;
+    insertText(template);
+    // Mover cursor al ID del anchor
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de plotly3d-anchor:
+        const newPos = startPos + template.indexOf('grafico-ejemplo');
+        // Seleccionar "grafico-ejemplo" para fácil reemplazo
+        const endPos = newPos + 16;
+        textarea.setSelectionRange(newPos, endPos);
+      }
+    }, 10);
+  };
+
   // Insertar plantilla de imagen con ancla
   const insertImageAnchor = () => {
     const template = '![texto alternativo](url-de-la-imagen){#img:}';
@@ -1621,7 +1751,7 @@ export default function MarkdownEditor({
           </div>
 
           {/* Estructura */}
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <select
               onChange={(e) => {
                 const value = e.target.value;
@@ -1643,6 +1773,32 @@ export default function MarkdownEditor({
               <option value="expandable">📂 Desplegable</option>
               <option value="section">📑 Sección</option>
               <option value="subsection">📄 Subsección</option>
+            </select>
+          </div>
+
+          {/* Gráficos */}
+          <div className="flex gap-1 items-center">
+            <select
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === 'plotly3d') insertPlotly3D();
+                else if (value === 'plotly3d-vector') insertPlotly3DVector();
+                else if (value === 'plotly3d-anchor') insertPlotly3DWithAnchor();
+                e.target.value = '';
+              }}
+              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+              style={{ 
+                borderColor: 'var(--border-glow)',
+                backgroundColor: 'rgb(26, 26, 46)',
+                color: 'var(--text-secondary)'
+              }}
+              defaultValue=""
+              title="Insertar gráfico Plotly 3D"
+            >
+              <option value="" disabled>📊 Gráficos...</option>
+              <option value="plotly3d">Gráfico 3D básico</option>
+              <option value="plotly3d-vector">Vector 3D</option>
+              <option value="plotly3d-anchor">Gráfico 3D con ancla</option>
             </select>
           </div>
         </div>

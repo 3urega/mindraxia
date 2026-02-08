@@ -55,6 +55,8 @@ import TheoremReference from './TheoremReference';
 import ProofAnchor from './ProofAnchor';
 import ProofReference from './ProofReference';
 import ExpandableSection from './ExpandableSection';
+import PlotlyDiagram from './PlotlyDiagram';
+import PlotlyAnchor from './PlotlyAnchor';
 
 interface MarkdownRendererProps {
   content: string;
@@ -639,14 +641,16 @@ export default function MarkdownRenderer({
               );
             }
             
-            // Detectar si es un bloque de código especial para ecuaciones, definiciones, teoremas o secciones expandibles con anclas
-            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, ```theorem-anchor:anchorId, ```proof-anchor:anchorId, o ```expandable-section:title
+            // Detectar si es un bloque de código especial para ecuaciones, definiciones, teoremas, secciones expandibles o gráficos Plotly
+            // El formato es: ```math-anchor:anchorId, ```definition-anchor:anchorId, ```theorem-anchor:anchorId, ```proof-anchor:anchorId, ```expandable-section:title, ```plotly3d, o ```plotly3d-anchor:id
             const language = className?.replace('language-', '') || '';
             const mathAnchorMatch = language.match(/^math-anchor:(.+)$/);
             const definitionAnchorMatch = language.match(/^definition-anchor:(.+)$/);
             const theoremAnchorMatch = language.match(/^theorem-anchor:(.+)$/);
             const proofAnchorMatch = language.match(/^proof-anchor:(.+)$/);
             const expandableSectionMatch = language.match(/^expandable-section:(.+)$/);
+            const plotly3dMatch = language === 'plotly3d';
+            const plotly3dAnchorMatch = language.match(/^plotly3d-anchor:(.+)$/);
             
             // Procesar ecuaciones
             if (mathAnchorMatch) {
@@ -1031,6 +1035,51 @@ export default function MarkdownRenderer({
                     </ReactMarkdown>
                   </div>
                 </ExpandableSection>
+              );
+            }
+            
+            // Procesar gráficos Plotly 3D
+            if (plotly3dMatch || plotly3dAnchorMatch) {
+              // Extraer el contenido JSON del bloque
+              let plotlyConfig = '';
+              if (Array.isArray(children)) {
+                plotlyConfig = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                plotlyConfig = String(children || '').trim();
+              }
+              plotlyConfig = plotlyConfig.trim();
+              
+              // Usar currentSlug o un slug temporal para el preview
+              const slug = currentSlug || 'preview';
+              
+              // Si hay anchorId, envolver con PlotlyAnchor
+              if (plotly3dAnchorMatch) {
+                const anchorId = plotly3dAnchorMatch[1];
+                // Por ahora no tenemos un sistema de extracción de anclas Plotly como con ecuaciones
+                // Podríamos añadirlo más adelante si es necesario
+                const description = undefined; // Se podría extraer del JSON si se añade soporte
+                
+                return (
+                  <PlotlyAnchor
+                    anchorId={anchorId}
+                    description={description}
+                    postSlug={slug}
+                  >
+                    <PlotlyDiagram
+                      config={plotlyConfig}
+                      anchorId={anchorId}
+                    />
+                  </PlotlyAnchor>
+                );
+              }
+              
+              // Sin ancla, renderizar directamente
+              return (
+                <PlotlyDiagram
+                  config={plotlyConfig}
+                />
               );
             }
             
