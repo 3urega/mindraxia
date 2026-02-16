@@ -226,95 +226,89 @@ export default function NewPostPage() {
           </div>
         )}
 
-        {/* Título */}
-        <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium text-text-secondary mb-2"
-          >
-            Título *
-          </label>
-          <input
-            id="title"
-            type="text"
-            required
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
-            style={{
-              borderColor: 'var(--border-glow)',
-            }}
-            placeholder="Título del post"
-            disabled={loading}
-          />
-        </div>
+        {/* Título, Slug y Extracto en la misma línea */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Título */}
+          <div>
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium text-text-secondary mb-2"
+            >
+              Título *
+            </label>
+            <input
+              id="title"
+              type="text"
+              required
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
+              style={{
+                borderColor: 'var(--border-glow)',
+              }}
+              placeholder="Título del post"
+              disabled={loading}
+            />
+          </div>
 
-        {/* Slug */}
-        <div>
-          <label
-            htmlFor="slug"
-            className="block text-sm font-medium text-text-secondary mb-2"
-          >
-            Slug * (URL amigable)
-          </label>
-          <input
-            id="slug"
-            type="text"
-            required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 font-mono text-sm"
-            style={{
-              borderColor: 'var(--border-glow)',
-            }}
-            placeholder="titulo-del-post"
-            disabled={loading}
-          />
-          <p className="mt-1 text-xs text-text-muted">
-            Solo letras minúsculas, números y guiones. Se genera automáticamente desde el título.
-          </p>
-        </div>
+          {/* Slug */}
+          <div>
+            <label
+              htmlFor="slug"
+              className="block text-sm font-medium text-text-secondary mb-2"
+            >
+              Slug * (URL amigable)
+            </label>
+            <input
+              id="slug"
+              type="text"
+              required
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 font-mono text-sm"
+              style={{
+                borderColor: 'var(--border-glow)',
+              }}
+              placeholder="titulo-del-post"
+              disabled={loading}
+            />
+          </div>
 
-        {/* Excerpt */}
-        <div>
-          <label
-            htmlFor="excerpt"
-            className="block text-sm font-medium text-text-secondary mb-2"
-          >
-            Extracto (opcional)
-          </label>
-          <textarea
-            id="excerpt"
-            value={excerpt}
-            onChange={(e) => setExcerpt(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 resize-none"
-            style={{
-              borderColor: 'var(--border-glow)',
-            }}
-            placeholder="Breve descripción del post..."
-            disabled={loading}
-          />
+          {/* Excerpt */}
+          <div>
+            <label
+              htmlFor="excerpt"
+              className="block text-sm font-medium text-text-secondary mb-2"
+            >
+              Extracto (opcional)
+            </label>
+            <input
+              id="excerpt"
+              type="text"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
+              style={{
+                borderColor: 'var(--border-glow)',
+              }}
+              placeholder="Breve descripción del post..."
+              disabled={loading}
+            />
+          </div>
         </div>
+        <p className="mt-1 text-xs text-text-muted">
+          El slug solo puede contener letras minúsculas, números y guiones. Se genera automáticamente desde el título.
+        </p>
 
         {/* Contenido - Editor Markdown */}
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            Contenido * (Markdown con soporte LaTeX)
-          </label>
-          <MarkdownEditor
-            value={content}
-            onChange={setContent}
-            placeholder="Escribe tu contenido en markdown. Usa $...$ para fórmulas inline y $$...$$ para fórmulas en bloque."
-            onSave={handleSave}
-            onSaveAndContinue={handleSaveAndContinue}
-            saving={loading}
-          />
-          <p className="mt-2 text-xs text-text-muted">
-            Soporta markdown completo y fórmulas matemáticas LaTeX. Usa los botones de acción rápida para insertar fórmulas. 
-            Para fórmulas numeradas, usa: <code className="px-1 py-0.5 rounded bg-space-primary text-star-cyan text-xs">$$\tag{1} fórmula $$</code>
-          </p>
-        </div>
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          placeholder="Escribe tu contenido en markdown. Usa $...$ para fórmulas inline y $$...$$ para fórmulas en bloque."
+          onSave={handleSave}
+          onSaveAndContinue={handleSaveAndContinue}
+          saving={loading}
+        />
 
         {/* Categorías y Subcategorías */}
         <div>

@@ -759,6 +759,22 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar matriz 3x3
+  const insertMatrix3x3 = () => {
+    const template = '\\begin{pmatrix}\na & b & c \\\\\nd & e & f \\\\\ng & h & i\n\\end{pmatrix}';
+    insertText(template);
+    // Mover cursor al primer elemento (a)
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('a &');
+        textarea.setSelectionRange(newPos, newPos + 1);
+      }
+    }, 10);
+  };
+
   // Insertar imagen
   const handleImageSelect = (url: string, alt: string, anchorId?: string, description?: string) => {
     let markdownText = '';
@@ -954,6 +970,122 @@ export default function MarkdownEditor({
         const currentPos = textarea.selectionStart;
         const startPos = currentPos - template.length;
         // Posición después de plotly3d-anchor:
+        const newPos = startPos + template.indexOf('grafico-ejemplo');
+        // Seleccionar "grafico-ejemplo" para fácil reemplazo
+        const endPos = newPos + 16;
+        textarea.setSelectionRange(newPos, endPos);
+      }
+    }, 10);
+  };
+
+  // Insertar gráfico Plotly 2D básico (línea)
+  const insertPlotly2D = () => {
+    const template = `\`\`\`plotly2d
+{
+  "data": [{
+    "type": "scatter",
+    "mode": "lines+markers",
+    "x": [1, 2, 3, 4, 5],
+    "y": [1, 4, 9, 16, 25],
+    "line": {
+      "color": "red",
+      "width": 2
+    },
+    "marker": {
+      "size": 5,
+      "color": "red"
+    }
+  }],
+  "layout": {
+    "xaxis": {"title": "X"},
+    "yaxis": {"title": "Y"},
+    "title": "Gráfico 2D"
+  }
+}
+\`\`\`
+`;
+    insertText(template);
+    // Mover cursor al inicio del JSON para fácil edición
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de ```plotly2d\n
+        const newPos = startPos + 13;
+        textarea.setSelectionRange(newPos, newPos);
+      }
+    }, 10);
+  };
+
+  // Insertar gráfico de barras 2D
+  const insertPlotly2DBar = () => {
+    const template = `\`\`\`plotly2d
+{
+  "data": [{
+    "type": "bar",
+    "x": ["A", "B", "C", "D"],
+    "y": [10, 20, 15, 25],
+    "marker": {
+      "color": "red"
+    }
+  }],
+  "layout": {
+    "xaxis": {"title": "Categoría"},
+    "yaxis": {"title": "Valor"},
+    "title": "Gráfico de Barras"
+  }
+}
+\`\`\`
+`;
+    insertText(template);
+    // Mover cursor a los valores de y
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición en "y": [10, 20, 15, 25]
+        const newPos = startPos + template.indexOf('"y": [10, 20, 15, 25]') + 6;
+        textarea.setSelectionRange(newPos, newPos + 15); // Seleccionar [10, 20, 15, 25]
+      }
+    }, 10);
+  };
+
+  // Insertar gráfico Plotly 2D con ancla
+  const insertPlotly2DWithAnchor = () => {
+    const template = `\`\`\`plotly2d-anchor:grafico-ejemplo
+{
+  "data": [{
+    "type": "scatter",
+    "mode": "lines+markers",
+    "x": [1, 2, 3, 4, 5],
+    "y": [1, 4, 9, 16, 25],
+    "line": {
+      "color": "red",
+      "width": 2
+    },
+    "marker": {
+      "size": 5,
+      "color": "red"
+    }
+  }],
+  "layout": {
+    "xaxis": {"title": "X"},
+    "yaxis": {"title": "Y"},
+    "title": "Gráfico 2D"
+  }
+}
+\`\`\`
+`;
+    insertText(template);
+    // Mover cursor al ID del anchor
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        // Posición después de plotly2d-anchor:
         const newPos = startPos + template.indexOf('grafico-ejemplo');
         // Seleccionar "grafico-ejemplo" para fácil reemplazo
         const endPos = newPos + 16;
@@ -1189,240 +1321,9 @@ export default function MarkdownEditor({
   // Función para renderizar la barra de herramientas (reutilizable)
   const renderToolbar = useCallback(() => (
     <div className="space-y-3">
-      {/* Básicas */}
-      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-        <span className="text-xs text-text-muted self-center mr-2 font-semibold">Básicas:</span>
-        <select
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === 'inline') insertInlineFormula();
-            else if (value === 'block') insertBlockFormula();
-            else if (value === 'numbered') insertNumberedFormula();
-            else if (value === 'named') insertNamedEquation();
-            else if (value === 'definition') insertNumberedDefinition();
-            else if (value === 'theorem') insertNumberedTheorem();
-            e.target.value = '';
-          }}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
-          style={{ 
-            borderColor: 'var(--border-glow)',
-            backgroundColor: 'rgb(26, 26, 46)',
-            color: 'var(--text-secondary)'
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccionar opción...</option>
-          <option value="inline">Fórmula Inline ($...$)</option>
-          <option value="block">Fórmula Bloque ($$...$$)</option>
-          <option value="numbered">Fórmula Numerada ({equationCounter})</option>
-          <option value="named">Ecuación con Nombre ({equationCounter})</option>
-          <option value="definition">Definición Numerada ({definitionCounter})</option>
-          <option value="theorem">Teorema Numerado ({theoremCounter})</option>
-        </select>
-        
-        <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Avanzadas:</span>
-        <select
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === 'integral') insertIntegral();
-            else if (value === 'summation') insertSummation();
-            else if (value === 'matrix') insertMatrix();
-            else if (value === 'complex-fraction') insertComplexFraction();
-            else if (value === 'aligned') insertAlignedEquations();
-            else if (value === 'cases') insertCaseFunction();
-            e.target.value = '';
-          }}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
-          style={{ 
-            borderColor: 'var(--border-glow)',
-            backgroundColor: 'rgb(26, 26, 46)',
-            color: 'var(--text-secondary)'
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccionar opción...</option>
-          <option value="integral">Integral</option>
-          <option value="summation">Sumatoria</option>
-          <option value="matrix">Matriz</option>
-          <option value="complex-fraction">Fracción Compleja</option>
-          <option value="aligned">Ecuaciones Alineadas</option>
-          <option value="cases">Función por Casos</option>
-        </select>
-        
-        <span className="text-xs text-text-muted self-center mr-2 ml-4 font-semibold">Anclas:</span>
-        <select
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === 'eq-anchor') insertAnchoredEquation();
-            else if (value === 'eq-anchor-desc') insertAnchoredEquationWithDescription();
-            else if (value === 'def-anchor') insertAnchoredDefinition();
-            else if (value === 'def-anchor-desc') insertAnchoredDefinitionWithDescription();
-            else if (value === 'thm-anchor') insertAnchoredTheorem();
-            else if (value === 'thm-anchor-desc') insertAnchoredTheoremWithDescription();
-            else if (value === 'prf-anchor') insertAnchoredProof();
-            else if (value === 'prf-anchor-desc') insertAnchoredProofWithDescription();
-            e.target.value = '';
-          }}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
-          style={{ 
-            borderColor: 'var(--border-glow)',
-            backgroundColor: 'rgb(26, 26, 46)',
-            color: 'var(--text-secondary)'
-          }}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccionar opción...</option>
-          <option value="eq-anchor">Ecuación con Ancla</option>
-          <option value="eq-anchor-desc">Ecuación + Descripción</option>
-          <option value="def-anchor">Definición con Ancla</option>
-          <option value="def-anchor-desc">Definición + Descripción</option>
-          <option value="thm-anchor">Teorema con Ancla</option>
-          <option value="thm-anchor-desc">Teorema + Descripción</option>
-          <option value="prf-anchor">Demostración con Ancla</option>
-          <option value="prf-anchor-desc">Demostración + Descripción</option>
-        </select>
-        
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowReferenceModal(true);
-          }}
-          className="px-4 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan ml-4"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar referencia a ecuación, imagen, definición o teorema"
-        >
-          🔗 Referencias
-        </button>
-      </div>
-
-      {/* Imágenes */}
-      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-        <span className="text-xs text-text-muted self-center mr-2 font-semibold">Imágenes:</span>
-        {postId && (
-          <button
-            type="button"
-            onClick={() => setShowImageUploader(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Subir e insertar imagen"
-          >
-            Subir Imagen
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={insertImageAnchor}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar imagen con ancla (para referencias)"
-        >
-          Imagen con Ancla
-        </button>
-        <button
-          type="button"
-          onClick={insertImageAnchorWithDescription}
-          className="px-3 py-1.5 text-xs font-medium rounded bg-nebula-purple/20 border border-nebula-purple/50 transition-colors hover:bg-nebula-purple/30 text-nebula-purple hover:text-nebula-purple"
-          title="Insertar imagen con ancla y descripción (para IA)"
-        >
-          Imagen con Ancla + Descripción
-        </button>
-        {postId && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowReferenceModal(true);
-            }}
-            className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-            style={{ borderColor: 'var(--border-glow)' }}
-            title="Insertar referencia a imagen existente"
-          >
-            Insertar Referencia a Imagen
-          </button>
-        )}
-      </div>
-
-      {/* Expresiones Matemáticas Comunes */}
-      <div className="flex flex-wrap gap-2 p-3 rounded-lg border" style={{ borderColor: 'var(--border-glow)', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
-        <span className="text-xs text-text-muted self-center mr-2 font-semibold w-full mb-2">Expresiones Comunes:</span>
-        <button
-          type="button"
-          onClick={insertLimit}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar límite: lim_{x→a} f(x)/g(x)"
-        >
-          Lim
-        </button>
-        <button
-          type="button"
-          onClick={insertDerivative}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar derivada: d/dx f(x)"
-        >
-          d/dx
-        </button>
-        <button
-          type="button"
-          onClick={insertFraction}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar fracción: a/b"
-        >
-          a/b
-        </button>
-        <button
-          type="button"
-          onClick={insertSquareRoot}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar raíz cuadrada: √x"
-        >
-          √
-        </button>
-        <button
-          type="button"
-          onClick={insertPower}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar potencia: x^n"
-        >
-          x^n
-        </button>
-        <button
-          type="button"
-          onClick={insertLogarithm}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar logaritmo: log(x)"
-        >
-          log
-        </button>
-        <button
-          type="button"
-          onClick={insertExponential}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar exponencial: e^x"
-        >
-          e^x
-        </button>
-        <button
-          type="button"
-          onClick={insertProduct}
-          className="px-3 py-1.5 text-xs font-medium rounded border transition-colors hover:bg-space-secondary text-text-secondary hover:text-star-cyan"
-          style={{ borderColor: 'var(--border-glow)' }}
-          title="Insertar producto: ∏ a_i"
-        >
-          ∏
-        </button>
-      </div>
+      {/* Panel vacío - las expresiones matemáticas ahora están en la barra sticky */}
     </div>
-  ), [equationCounter, definitionCounter, theoremCounter, postId, insertInlineFormula, insertBlockFormula, insertNumberedFormula, insertNamedEquation, insertNumberedDefinition, insertNumberedTheorem, insertIntegral, insertSummation, insertMatrix, insertComplexFraction, insertAlignedEquations, insertCaseFunction, insertAnchoredEquation, insertAnchoredEquationWithDescription, insertAnchoredDefinition, insertAnchoredDefinitionWithDescription, insertAnchoredTheorem, insertAnchoredTheoremWithDescription, insertAnchoredProof, insertAnchoredProofWithDescription, insertSection, insertSubsection, insertImageAnchor, insertImageAnchorWithDescription, insertLimit, insertDerivative, insertFraction, insertSquareRoot, insertPower, insertLogarithm, insertExponential, insertProduct, setShowReferenceModal, setShowImageUploader]);
+  ), []);
 
   return (
     <div className="w-full relative">
@@ -1702,6 +1603,44 @@ export default function MarkdownEditor({
             </button>
           </div>
 
+          {/* Expresiones Matemáticas Comunes */}
+          <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
+            <select
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === 'limit') insertLimit();
+                else if (value === 'derivative') insertDerivative();
+                else if (value === 'fraction') insertFraction();
+                else if (value === 'sqrt') insertSquareRoot();
+                else if (value === 'power') insertPower();
+                else if (value === 'log') insertLogarithm();
+                else if (value === 'exp') insertExponential();
+                else if (value === 'product') insertProduct();
+                else if (value === 'matrix3x3') insertMatrix3x3();
+                e.target.value = '';
+              }}
+              className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
+              style={{ 
+                borderColor: 'var(--border-glow)',
+                backgroundColor: 'rgb(26, 26, 46)',
+                color: 'var(--text-secondary)'
+              }}
+              defaultValue=""
+              title="Insertar expresión matemática común"
+            >
+              <option value="" disabled>🔢 Expresiones...</option>
+              <option value="limit">Lim</option>
+              <option value="derivative">d/dx</option>
+              <option value="fraction">a/b</option>
+              <option value="sqrt">√</option>
+              <option value="power">x^n</option>
+              <option value="log">log</option>
+              <option value="exp">e^x</option>
+              <option value="product">∏</option>
+              <option value="matrix3x3">Matriz 3×3</option>
+            </select>
+          </div>
+
           {/* Enlace */}
           <div className="flex gap-1 items-center pr-2 border-r" style={{ borderColor: 'var(--border-glow)' }}>
             <button
@@ -1784,6 +1723,9 @@ export default function MarkdownEditor({
                 if (value === 'plotly3d') insertPlotly3D();
                 else if (value === 'plotly3d-vector') insertPlotly3DVector();
                 else if (value === 'plotly3d-anchor') insertPlotly3DWithAnchor();
+                else if (value === 'plotly2d') insertPlotly2D();
+                else if (value === 'plotly2d-bar') insertPlotly2DBar();
+                else if (value === 'plotly2d-anchor') insertPlotly2DWithAnchor();
                 e.target.value = '';
               }}
               className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
@@ -1793,12 +1735,19 @@ export default function MarkdownEditor({
                 color: 'var(--text-secondary)'
               }}
               defaultValue=""
-              title="Insertar gráfico Plotly 3D"
+              title="Insertar gráfico Plotly"
             >
               <option value="" disabled>📊 Gráficos...</option>
-              <option value="plotly3d">Gráfico 3D básico</option>
-              <option value="plotly3d-vector">Vector 3D</option>
-              <option value="plotly3d-anchor">Gráfico 3D con ancla</option>
+              <optgroup label="3D">
+                <option value="plotly3d">Gráfico 3D básico</option>
+                <option value="plotly3d-vector">Vector 3D</option>
+                <option value="plotly3d-anchor">Gráfico 3D con ancla</option>
+              </optgroup>
+              <optgroup label="2D">
+                <option value="plotly2d">Gráfico 2D (línea)</option>
+                <option value="plotly2d-bar">Gráfico de barras</option>
+                <option value="plotly2d-anchor">Gráfico 2D con ancla</option>
+              </optgroup>
             </select>
           </div>
         </div>

@@ -353,90 +353,88 @@ export default function EditPostPage() {
           </div>
         )}
 
-        {/* Título */}
-        <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium text-text-secondary mb-2"
-          >
-            Título *
-          </label>
-          <input
-            id="title"
-            type="text"
-            required
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
-            style={{
-              borderColor: 'var(--border-glow)',
-            }}
-            placeholder="Título del post"
-            disabled={saving}
-          />
-        </div>
+        {/* Título, Slug y Extracto en la misma línea */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Título */}
+          <div>
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium text-text-secondary mb-2"
+            >
+              Título *
+            </label>
+            <input
+              id="title"
+              type="text"
+              required
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
+              style={{
+                borderColor: 'var(--border-glow)',
+              }}
+              placeholder="Título del post"
+              disabled={saving}
+            />
+          </div>
 
-        {/* Slug */}
-        <div>
-          <label
-            htmlFor="slug"
-            className="block text-sm font-medium text-text-secondary mb-2"
-          >
-            Slug * (URL amigable)
-          </label>
-          <input
-            id="slug"
-            type="text"
-            required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 font-mono text-sm"
-            style={{
-              borderColor: 'var(--border-glow)',
-            }}
-            placeholder="titulo-del-post"
-            disabled={saving}
-          />
-        </div>
+          {/* Slug */}
+          <div>
+            <label
+              htmlFor="slug"
+              className="block text-sm font-medium text-text-secondary mb-2"
+            >
+              Slug * (URL amigable)
+            </label>
+            <input
+              id="slug"
+              type="text"
+              required
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 font-mono text-sm"
+              style={{
+                borderColor: 'var(--border-glow)',
+              }}
+              placeholder="titulo-del-post"
+              disabled={saving}
+            />
+          </div>
 
-        {/* Excerpt */}
-        <div>
-          <label
-            htmlFor="excerpt"
-            className="block text-sm font-medium text-text-secondary mb-2"
-          >
-            Extracto (opcional)
-          </label>
-          <textarea
-            id="excerpt"
-            value={excerpt}
-            onChange={(e) => setExcerpt(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20 resize-none"
-            style={{
-              borderColor: 'var(--border-glow)',
-            }}
-            placeholder="Breve descripción del post..."
-            disabled={saving}
-          />
+          {/* Excerpt */}
+          <div>
+            <label
+              htmlFor="excerpt"
+              className="block text-sm font-medium text-text-secondary mb-2"
+            >
+              Extracto (opcional)
+            </label>
+            <input
+              id="excerpt"
+              type="text"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              className="w-full rounded-lg border bg-space-primary px-4 py-3 text-text-primary placeholder-text-muted focus:border-star-cyan focus:outline-none focus:ring-2 focus:ring-star-cyan/20"
+              style={{
+                borderColor: 'var(--border-glow)',
+              }}
+              placeholder="Breve descripción del post..."
+              disabled={saving}
+            />
+          </div>
         </div>
 
         {/* Contenido - Editor Markdown */}
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            Contenido * (Markdown con soporte LaTeX)
-          </label>
-          <MarkdownEditor
-            value={content}
-            onChange={setContent}
-            placeholder="Escribe tu contenido en markdown. Usa $...$ para fórmulas inline y $$...$$ para fórmulas en bloque."
-            postId={postId}
-            currentPostSlug={slug}
-            onSave={handleSave}
-            onSaveAndContinue={handleSaveAndContinue}
-            saving={saving}
-          />
-        </div>
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          placeholder="Escribe tu contenido en markdown. Usa $...$ para fórmulas inline y $$...$$ para fórmulas en bloque."
+          postId={postId}
+          currentPostSlug={slug}
+          onSave={handleSave}
+          onSaveAndContinue={handleSaveAndContinue}
+          saving={saving}
+        />
 
         {/* Categorías y Subcategorías */}
         <div>

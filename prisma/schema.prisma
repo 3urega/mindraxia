@@ -265,4 +265,3 @@ model PostCollectionItem {
   @@index([collectionId])
   @@index([postId])
 }
-

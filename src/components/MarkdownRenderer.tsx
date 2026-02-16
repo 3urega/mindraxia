@@ -651,6 +651,8 @@ export default function MarkdownRenderer({
             const expandableSectionMatch = language.match(/^expandable-section:(.+)$/);
             const plotly3dMatch = language === 'plotly3d';
             const plotly3dAnchorMatch = language.match(/^plotly3d-anchor:(.+)$/);
+            const plotly2dMatch = language === 'plotly2d';
+            const plotly2dAnchorMatch = language.match(/^plotly2d-anchor:(.+)$/);
             
             // Procesar ecuaciones
             if (mathAnchorMatch) {
@@ -1059,6 +1061,49 @@ export default function MarkdownRenderer({
                 const anchorId = plotly3dAnchorMatch[1];
                 // Por ahora no tenemos un sistema de extracción de anclas Plotly como con ecuaciones
                 // Podríamos añadirlo más adelante si es necesario
+                const description = undefined; // Se podría extraer del JSON si se añade soporte
+                
+                return (
+                  <PlotlyAnchor
+                    anchorId={anchorId}
+                    description={description}
+                    postSlug={slug}
+                  >
+                    <PlotlyDiagram
+                      config={plotlyConfig}
+                      anchorId={anchorId}
+                    />
+                  </PlotlyAnchor>
+                );
+              }
+              
+              // Sin ancla, renderizar directamente
+              return (
+                <PlotlyDiagram
+                  config={plotlyConfig}
+                />
+              );
+            }
+            
+            // Procesar gráficos Plotly 2D
+            if (plotly2dMatch || plotly2dAnchorMatch) {
+              // Extraer el contenido JSON del bloque
+              let plotlyConfig = '';
+              if (Array.isArray(children)) {
+                plotlyConfig = children.map(child => 
+                  typeof child === 'string' ? child : String(child)
+                ).join('');
+              } else {
+                plotlyConfig = String(children || '').trim();
+              }
+              plotlyConfig = plotlyConfig.trim();
+              
+              // Usar currentSlug o un slug temporal para el preview
+              const slug = currentSlug || 'preview';
+              
+              // Si hay anchorId, envolver con PlotlyAnchor
+              if (plotly2dAnchorMatch) {
+                const anchorId = plotly2dAnchorMatch[1];
                 const description = undefined; // Se podría extraer del JSON si se añade soporte
                 
                 return (
