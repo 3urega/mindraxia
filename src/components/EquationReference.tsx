@@ -38,8 +38,8 @@ export default function EquationReference({
     if (embed && postSlug) {
       setLoading(true);
       setError(null);
-      
-      fetch(`/api/public/equations/${postSlug}/${anchorId}`)
+      const encodedAnchorId = encodeURIComponent(anchorId);
+      fetch(`/api/public/equations/${postSlug}/${encodedAnchorId}`)
         .then((res) => {
           if (!res.ok) {
             throw new Error('Ecuación no encontrada');

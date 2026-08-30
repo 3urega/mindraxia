@@ -18,6 +18,18 @@ export interface EquationReference {
 }
 
 /**
+ * Normaliza un anchorId para que coincida con el usado al guardar ecuaciones.
+ * Así las referencias {{eq:slug/n primeros naturales|texto}} resuelven aunque el id guardado sea "n-primeros-naturales".
+ */
+export function normalizeAnchorId(anchorId: string): string {
+  return anchorId
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+/**
  * Extrae todas las anclas de ecuaciones del markdown
  * Sintaxis: $${#eq:anchor-id|descripción: texto}...$$
  */
@@ -32,8 +44,7 @@ export function extractAnchors(content: string): EquationAnchor[] {
   let match;
   while ((match = anchorRegex.exec(content)) !== null) {
     const [, rawAnchorId, description, equation] = match;
-    // Normalizar ID: convertir a minúsculas, reemplazar espacios con guiones, eliminar caracteres especiales
-    const anchorId = rawAnchorId.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const anchorId = normalizeAnchorId(rawAnchorId);
     
     anchors.push({
       anchorId: anchorId,
@@ -97,17 +108,13 @@ export function preprocessAnchors(content: string): string {
   return content.replace(
     /\$\$\{#eq:([^}|]+)(?:\|descripción:[^}]+)\}([\s\S]*?)\$\$/g,
     (match, rawAnchorId, equation) => {
-      // Normalizar ID igual que en extractAnchors
-      const anchorId = rawAnchorId.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-      // Crear un bloque de código con marcador especial que luego procesaremos
+      const anchorId = normalizeAnchorId(rawAnchorId);
       return `\`\`\`math-anchor:${anchorId}\n${equation.trim()}\n\`\`\``;
     }
   ).replace(
     /\$\$\{#eq:([^}|]+)\}([\s\S]*?)\$\$/g,
     (match, rawAnchorId, equation) => {
-      // Sin descripción
-      // Normalizar ID igual que en extractAnchors
-      const anchorId = rawAnchorId.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const anchorId = normalizeAnchorId(rawAnchorId);
       return `\`\`\`math-anchor:${anchorId}\n${equation.trim()}\n\`\`\``;
     }
   );
@@ -130,7 +137,8 @@ export function getAnchorHtmlId(anchorId: string): string {
 }
 
 /**
- * Genera la URL para una referencia a una ecuación
+ * Genera la URL para una referencia a una ecuación.
+ * Normaliza el anchorId para que el hash coincida con el id del elemento en el post destino.
  */
 export function getEquationReferenceUrl(
   anchorId: string,
@@ -141,6 +149,7 @@ export function getEquationReferenceUrl(
   if (!slug) {
     return '#';
   }
-  return `/blog/${slug}#${getAnchorHtmlId(anchorId)}`;
+  const normalized = normalizeAnchorId(anchorId);
+  return `/blog/${slug}#${getAnchorHtmlId(normalized)}`;
 }
 

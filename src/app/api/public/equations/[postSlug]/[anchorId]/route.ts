@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/get-session';
+import { normalizeAnchorId } from '@/lib/markdown-anchors';
 
 /**
  * GET /api/public/equations/[postSlug]/[anchorId]
- * Obtiene una ecuación específica por postSlug y anchorId (público, solo posts publicados)
+ * Obtiene una ecuación específica por postSlug y anchorId (público, solo posts publicados).
+ * El anchorId puede venir con espacios o sin normalizar; se normaliza para la búsqueda.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ postSlug: string; anchorId: string }> }
 ) {
   try {
-    const { postSlug, anchorId } = await params;
+    const { postSlug, anchorId: rawAnchorId } = await params;
+    const anchorId = normalizeAnchorId(decodeURIComponent(rawAnchorId || ''));
     const user = await getCurrentUser();
 
     // Validar parámetros
-    if (!postSlug || !anchorId) {
+    if (!postSlug || !anchorId || anchorId === '') {
       return NextResponse.json(
         {
           error: 'Bad Request',

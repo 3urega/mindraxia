@@ -978,6 +978,23 @@ export default function MarkdownEditor({
     }, 10);
   };
 
+  // Insertar GeoGebra embed
+  const insertGeoGebra = () => {
+    const template = `\`\`\`geogebra:XXXXX
+\`\`\`
+`;
+    insertText(template);
+    setTimeout(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const currentPos = textarea.selectionStart;
+        const startPos = currentPos - template.length;
+        const newPos = startPos + template.indexOf('XXXXX');
+        textarea.setSelectionRange(newPos, newPos + 5);
+      }
+    }, 10);
+  };
+
   // Insertar gráfico Plotly 2D básico (línea)
   const insertPlotly2D = () => {
     const template = `\`\`\`plotly2d
@@ -1726,6 +1743,7 @@ export default function MarkdownEditor({
                 else if (value === 'plotly2d') insertPlotly2D();
                 else if (value === 'plotly2d-bar') insertPlotly2DBar();
                 else if (value === 'plotly2d-anchor') insertPlotly2DWithAnchor();
+                else if (value === 'geogebra') insertGeoGebra();
                 e.target.value = '';
               }}
               className="px-3 py-1.5 text-xs font-medium rounded border transition-colors text-text-secondary focus:outline-none focus:border-star-cyan"
@@ -1747,6 +1765,9 @@ export default function MarkdownEditor({
                 <option value="plotly2d">Gráfico 2D (línea)</option>
                 <option value="plotly2d-bar">Gráfico de barras</option>
                 <option value="plotly2d-anchor">Gráfico 2D con ancla</option>
+              </optgroup>
+              <optgroup label="Embed">
+                <option value="geogebra">GeoGebra</option>
               </optgroup>
             </select>
           </div>

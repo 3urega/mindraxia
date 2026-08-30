@@ -653,6 +653,36 @@ export default function MarkdownRenderer({
             const plotly3dAnchorMatch = language.match(/^plotly3d-anchor:(.+)$/);
             const plotly2dMatch = language === 'plotly2d';
             const plotly2dAnchorMatch = language.match(/^plotly2d-anchor:(.+)$/);
+            const geogebraMatch = language === 'geogebra';
+            const geogebraIdMatch = language.match(/^geogebra:(.+)$/);
+            
+            // Procesar GeoGebra embed
+            if (geogebraMatch || geogebraIdMatch) {
+              let materialId = geogebraIdMatch?.[1]?.trim();
+              if (!materialId) {
+                const content = Array.isArray(children)
+                  ? children.map(c => typeof c === 'string' ? c : String(c)).join('')
+                  : String(children || '').trim();
+                materialId = content.split(/[\s\n]/)[0]?.trim() || '';
+              }
+              if (materialId) {
+                const width = 800;
+                const height = 600;
+                const embedUrl = `https://www.geogebra.org/material/iframe/id/${materialId}/width/${width}/height/${height}/border/888888/rc/false/ai/false`;
+                return (
+                  <div className="my-6 rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-glow)', borderWidth: '1px', borderStyle: 'solid', backgroundColor: 'rgba(26, 26, 46, 0.3)' }}>
+                    <iframe
+                      src={embedUrl}
+                      width={width}
+                      height={height}
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      title="GeoGebra"
+                    />
+                  </div>
+                );
+              }
+            }
             
             // Procesar ecuaciones
             if (mathAnchorMatch) {
